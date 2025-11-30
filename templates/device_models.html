@@ -1,0 +1,1305 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>设备模型管理</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            padding: 30px 0;
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .management-container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .action-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+        }
+        
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+        
+        .delete-btn {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+            padding: 6px 12px;
+            font-size: 14px;
+        }
+        
+        .devices-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .devices-table th, .devices-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .devices-table th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+        }
+        
+        .devices-table tr:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .no-data {
+            text-align: center;
+            padding: 30px;
+            color: #666;
+        }
+        
+        .message {
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.4);
+        }
+        
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 500px;
+            border-radius: 10px;
+        }
+        
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+        
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            background-color: #f0f0f0;
+            border: 1px solid #ddd;
+            border-bottom: none;
+            border-radius: 5px 5px 0 0;
+            margin-right: 5px;
+        }
+        
+        .tab.active {
+            background-color: #fff;
+            font-weight: bold;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        @media (max-width: 768px) {
+            .action-buttons {
+                flex-direction: column;
+            }
+            
+            .action-btn {
+                text-align: center;
+            }
+            
+            .devices-table {
+                font-size: 14px;
+            }
+            
+            .devices-table th, .devices-table td {
+                padding: 8px 10px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>设备模型管理</h1>
+            <p>管理设备类型及其属性、事件和方法</p>
+        </div>
+        
+        <div class="management-container">
+            <div class="action-buttons">
+                <button class="action-btn" onclick="openCreateModal()">新增设备类型</button>
+            </div>
+            
+            <h2>设备类型列表</h2>
+            
+            <div id="device-types-container">
+                <div class="no-data">
+                    <p>加载中...</p>
+                </div>
+            </div>
+            
+            <a href="/device-management" class="back-link">返回设备管理</a>
+        </div>
+    </div>
+    
+    <!-- 创建/编辑设备类型模态框 -->
+    <div id="deviceTypeModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeDeviceTypeModal()">&times;</span>
+            <h2 id="modal-title">新增设备类型</h2>
+            <form id="device-type-form" enctype="multipart/form-data">
+                <input type="hidden" id="device-type-id">
+                <div class="form-group">
+                    <label for="device-type-name">设备类型名称 *</label>
+                    <input type="text" id="device-type-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="device-type-description">描述</label>
+                    <textarea id="device-type-description" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="device-type-image">设备图片</label>
+                    <input type="file" id="device-type-image" accept="image/*">
+                    <div id="image-preview-container" style="margin-top: 10px; display: none;">
+                        <img id="image-preview" src="" alt="预览图片" style="max-width: 200px; max-height: 200px;">
+                    </div>
+                </div>
+                <button type="submit" class="btn">保存</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- 管理设备类型详情模态框 -->
+    <div id="deviceTypeDetailModal" class="modal">
+        <div class="modal-content" style="width: 90%; max-width: 900px;">
+            <span class="close" onclick="closeDeviceTypeDetailModal()">&times;</span>
+            <h2 id="detail-modal-title">设备类型详情</h2>
+            
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('properties')">属性</div>
+                <div class="tab" onclick="switchTab('methods')">方法</div>
+                <div class="tab" onclick="switchTab('events')">事件</div>
+            </div>
+            
+            <div class="tab-content active" id="properties-tab">
+                <div class="action-buttons">
+                    <button class="action-btn" onclick="openPropertyModal()">新增属性</button>
+                </div>
+                <div id="properties-list">
+                    <div class="no-data">
+                        <p>加载中...</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tab-content" id="methods-tab">
+                <div class="action-buttons">
+                    <button class="action-btn" onclick="openMethodModal()">新增方法</button>
+                </div>
+                <div id="methods-list">
+                    <div class="no-data">
+                        <p>加载中...</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tab-content" id="events-tab">
+                <div class="action-buttons">
+                    <button class="action-btn" onclick="openEventModal()">新增事件</button>
+                </div>
+                <div id="events-list">
+                    <div class="no-data">
+                        <p>加载中...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 属性模态框 -->
+    <div id="propertyModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closePropertyModal()">&times;</span>
+            <h2 id="property-modal-title">新增属性</h2>
+            <form id="property-form">
+                <input type="hidden" id="property-id">
+                <input type="hidden" id="property-device-type-id">
+                <div class="form-group">
+                    <label for="property-name">属性名称 *</label>
+                    <input type="text" id="property-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="property-identifier">标识符 *</label>
+                    <input type="text" id="property-identifier" required>
+                </div>
+                <div class="form-group">
+                    <label for="property-data-type">数据类型 *</label>
+                    <select id="property-data-type" required>
+                        <option value="">请选择</option>
+                        <option value="int">整数 (int)</option>
+                        <option value="float">浮点数 (float)</option>
+                        <option value="string">字符串 (string)</option>
+                        <option value="bool">布尔值 (bool)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="property-unit">单位</label>
+                    <input type="text" id="property-unit">
+                </div>
+                <div class="form-group">
+                    <label for="property-read-write">读写类型</label>
+                    <select id="property-read-write">
+                        <option value="r">只读</option>
+                        <option value="w">只写</option>
+                        <option value="rw" selected>读写</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="property-description">描述</label>
+                    <textarea id="property-description" rows="2"></textarea>
+                </div>
+                <button type="submit" class="btn">保存</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- 方法模态框 -->
+    <div id="methodModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeMethodModal()">&times;</span>
+            <h2 id="method-modal-title">新增方法</h2>
+            <form id="method-form">
+                <input type="hidden" id="method-id">
+                <input type="hidden" id="method-device-type-id">
+                <div class="form-group">
+                    <label for="method-name">方法名称 *</label>
+                    <input type="text" id="method-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="method-identifier">标识符 *</label>
+                    <input type="text" id="method-identifier" required>
+                </div>
+                <div class="form-group">
+                    <label for="method-description">描述</label>
+                    <textarea id="method-description" rows="2"></textarea>
+                </div>
+                <button type="submit" class="btn">保存</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- 事件模态框 -->
+    <div id="eventModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeEventModal()">&times;</span>
+            <h2 id="event-modal-title">新增事件</h2>
+            <form id="event-form">
+                <input type="hidden" id="event-id">
+                <input type="hidden" id="event-device-type-id">
+                <div class="form-group">
+                    <label for="event-name">事件名称 *</label>
+                    <input type="text" id="event-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="event-identifier">标识符 *</label>
+                    <input type="text" id="event-identifier" required>
+                </div>
+                <div class="form-group">
+                    <label for="event-level">事件级别</label>
+                    <select id="event-level">
+                        <option value="info">信息</option>
+                        <option value="warning">警告</option>
+                        <option value="error">错误</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="event-condition">触发条件</label>
+                    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                        <select id="event-property-selector" onchange="insertPropertyIntoCondition()">
+                            <option value="">选择属性</option>
+                        </select>
+                        <button type="button" class="action-btn" style="padding: 6px 12px; font-size: 14px;" onclick="insertOperatorIntoCondition('>')">></button>
+                        <button type="button" class="action-btn" style="padding: 6px 12px; font-size: 14px;" onclick="insertOperatorIntoCondition('<')"><</button>
+                        <button type="button" class="action-btn" style="padding: 6px 12px; font-size: 14px;" onclick="insertOperatorIntoCondition('>=')">>=</button>
+                        <button type="button" class="action-btn" style="padding: 6px 12px; font-size: 14px;" onclick="insertOperatorIntoCondition('<=')"><=</button>
+                        <button type="button" class="action-btn" style="padding: 6px 12px; font-size: 14px;" onclick="insertOperatorIntoCondition('==')">==</button>
+                        <button type="button" class="action-btn" style="padding: 6px 12px; font-size: 14px;" onclick="insertOperatorIntoCondition('!=')">!=</button>
+                    </div>
+                    <textarea id="event-condition" rows="3" placeholder="输入触发条件表达式，例如: temperature > 80"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="event-description">描述</label>
+                    <textarea id="event-description" rows="2"></textarea>
+                </div>
+                <button type="submit" class="btn">保存</button>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        // 全局变量
+        let currentDeviceTypeId = null;
+        
+        // 页面加载完成后获取设备类型列表
+        document.addEventListener('DOMContentLoaded', function() {
+            loadDeviceTypes();
+            
+            // 绑定表单提交事件
+            document.getElementById('device-type-form').addEventListener('submit', handleDeviceTypeSubmit);
+            document.getElementById('property-form').addEventListener('submit', handlePropertySubmit);
+            document.getElementById('method-form').addEventListener('submit', handleMethodSubmit);
+            document.getElementById('event-form').addEventListener('submit', handleEventSubmit);
+            
+            // 绑定图片预览事件
+            document.getElementById('device-type-image').addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const preview = document.getElementById('image-preview');
+                        preview.src = e.target.result;
+                        document.getElementById('image-preview-container').style.display = 'block';
+                    }
+                    reader.readAsDataURL(file);
+                } else {
+                    document.getElementById('image-preview-container').style.display = 'none';
+                }
+            });
+        });
+        
+        // 获取设备类型列表
+        function loadDeviceTypes() {
+            fetch('/api/device-types')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        renderDeviceTypes(data.data);
+                    } else {
+                        showMessage(data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showMessage('获取设备类型列表失败', 'error');
+                });
+        }
+        
+        // 渲染设备类型列表
+        function renderDeviceTypes(deviceTypes) {
+            const container = document.getElementById('device-types-container');
+            
+            if (deviceTypes.length === 0) {
+                container.innerHTML = `
+                    <div class="no-data">
+                        <p>暂无设备类型信息</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = `
+                <table class="devices-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>设备类型名称</th>
+                            <th>描述</th>
+                            <th>图片</th>
+                            <th>创建时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            deviceTypes.forEach(type => {
+                html += `
+                    <tr>
+                        <td>${type.id}</td>
+                        <td>${type.name}</td>
+                        <td>${type.description || ''}</td>
+                        <td>${type.image_path ? '<img src="/static/' + type.image_path + '" style="max-width: 50px; max-height: 50px;">' : '无'}</td>
+                        <td>${type.created_at ? new Date(type.created_at).toLocaleString() : ''}</td>
+                        <td>
+                            <button class="action-btn" onclick="openDetailModal(${type.id}, '${type.name}')" style="padding: 6px 12px; font-size: 14px;">管理</button>
+                            <button class="action-btn" onclick="editDeviceType(${type.id}, '${type.name}', '${type.description || ''}', '${type.image_path || ''}')" style="padding: 6px 12px; font-size: 14px;">编辑</button>
+                            <button class="action-btn delete-btn" onclick="deleteDeviceType(${type.id})" style="padding: 6px 12px; font-size: 14px;">删除</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                    </tbody>
+                </table>
+            `;
+            
+            container.innerHTML = html;
+        }
+        
+        // 打开创建设备类型模态框
+        function openCreateModal() {
+            document.getElementById('modal-title').textContent = '新增设备类型';
+            document.getElementById('device-type-id').value = '';
+            document.getElementById('device-type-name').value = '';
+            document.getElementById('device-type-description').value = '';
+            document.getElementById('device-type-image').value = '';
+            document.getElementById('image-preview-container').style.display = 'none';
+            document.getElementById('deviceTypeModal').style.display = 'block';
+        }
+        
+        // 编辑设备类型
+        function editDeviceType(id, name, description, image_path) {
+            document.getElementById('modal-title').textContent = '编辑设备类型';
+            document.getElementById('device-type-id').value = id;
+            document.getElementById('device-type-name').value = name;
+            document.getElementById('device-type-description').value = description;
+            document.getElementById('device-type-image').value = '';
+            
+            // 显示现有图片预览
+            if (image_path) {
+                const preview = document.getElementById('image-preview');
+                preview.src = '/static/' + image_path;
+                document.getElementById('image-preview-container').style.display = 'block';
+            } else {
+                document.getElementById('image-preview-container').style.display = 'none';
+            }
+            
+            document.getElementById('deviceTypeModal').style.display = 'block';
+        }
+        
+        // 关闭设备类型模态框
+        function closeDeviceTypeModal() {
+            document.getElementById('deviceTypeModal').style.display = 'none';
+        }
+        
+        // 处理设备类型表单提交
+        function handleDeviceTypeSubmit(e) {
+            e.preventDefault();
+            
+            const id = document.getElementById('device-type-id').value;
+            const name = document.getElementById('device-type-name').value;
+            const description = document.getElementById('device-type-description').value;
+            const imageFile = document.getElementById('device-type-image').files[0];
+            
+            // 创建FormData对象以支持文件上传
+            const formData = new FormData();
+            formData.append('name', name);
+            formData.append('description', description);
+            if (imageFile) {
+                formData.append('image', imageFile);
+            }
+            
+            const method = id ? 'PUT' : 'POST';
+            const url = id ? `/api/device-types/${id}` : '/api/device-types';
+            
+            fetch(url, {
+                method: method,
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage(data.message, 'success');
+                    closeDeviceTypeModal();
+                    loadDeviceTypes();
+                } else {
+                    showMessage(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMessage('操作失败', 'error');
+            });
+        }
+        
+        // 删除设备类型
+        function deleteDeviceType(id) {
+            if (!confirm('确定要删除该设备类型吗？')) {
+                return;
+            }
+            
+            fetch(`/api/device-types/${id}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage(data.message, 'success');
+                    loadDeviceTypes();
+                } else {
+                    showMessage(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMessage('删除失败', 'error');
+            });
+        }
+        
+        // 打开详情模态框
+        function openDetailModal(deviceTypeId, deviceTypeName) {
+            currentDeviceTypeId = deviceTypeId;
+            document.getElementById('detail-modal-title').textContent = `设备类型详情: ${deviceTypeName}`;
+            document.getElementById('deviceTypeDetailModal').style.display = 'block';
+            
+            // 加载属性、方法和事件
+            loadProperties(deviceTypeId);
+            loadMethods(deviceTypeId);
+            loadEvents(deviceTypeId);
+        }
+        
+        // 关闭详情模态框
+        function closeDeviceTypeDetailModal() {
+            document.getElementById('deviceTypeDetailModal').style.display = 'none';
+        }
+        
+        // 切换标签页
+        function switchTab(tabName) {
+            // 更新标签页激活状态
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelector(`.tab[onclick="switchTab('${tabName}')"]`).classList.add('active');
+            
+            // 显示对应的标签内容
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+        }
+        
+        // ==================== 属性管理 ====================
+        
+        // 加载属性列表
+        function loadProperties(deviceTypeId) {
+            fetch(`/api/device-types/${deviceTypeId}/properties`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        renderProperties(data.data);
+                    } else {
+                        showMessage(data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showMessage('获取属性列表失败', 'error');
+                });
+        }
+        
+        // 渲染属性列表
+        function renderProperties(properties) {
+            const container = document.getElementById('properties-list');
+            
+            if (properties.length === 0) {
+                container.innerHTML = `
+                    <div class="no-data">
+                        <p>暂无属性信息</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = `
+                <table class="devices-table">
+                    <thead>
+                        <tr>
+                            <th>名称</th>
+                            <th>标识符</th>
+                            <th>数据类型</th>
+                            <th>单位</th>
+                            <th>读写类型</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            properties.forEach(prop => {
+                html += `
+                    <tr>
+                        <td>${prop.name}</td>
+                        <td>${prop.identifier}</td>
+                        <td>${prop.data_type}</td>
+                        <td>${prop.unit || ''}</td>
+                        <td>${getReadWriteText(prop.read_write_flag)}</td>
+                        <td>
+                            <button class="action-btn" onclick="editProperty(${prop.id}, '${prop.name}', '${prop.identifier}', '${prop.data_type}', '${prop.unit || ''}', '${prop.read_write_flag}', '${prop.description || ''}')" style="padding: 6px 12px; font-size: 14px;">编辑</button>
+                            <button class="action-btn delete-btn" onclick="deleteProperty(${prop.id})" style="padding: 6px 12px; font-size: 14px;">删除</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                    </tbody>
+                </table>
+            `;
+            
+            container.innerHTML = html;
+        }
+        
+        // 获取读写类型文本
+        function getReadWriteText(flag) {
+            switch (flag) {
+                case 'r': return '只读';
+                case 'w': return '只写';
+                case 'rw': return '读写';
+                default: return flag;
+            }
+        }
+        
+        // 打开属性模态框
+        function openPropertyModal() {
+            document.getElementById('property-modal-title').textContent = '新增属性';
+            document.getElementById('property-id').value = '';
+            document.getElementById('property-device-type-id').value = currentDeviceTypeId;
+            document.getElementById('property-name').value = '';
+            document.getElementById('property-identifier').value = '';
+            document.getElementById('property-data-type').value = '';
+            document.getElementById('property-unit').value = '';
+            document.getElementById('property-read-write').value = 'rw';
+            document.getElementById('property-description').value = '';
+            document.getElementById('propertyModal').style.display = 'block';
+        }
+        
+        // 编辑属性
+        function editProperty(id, name, identifier, data_type, unit, read_write_flag, description) {
+            document.getElementById('property-modal-title').textContent = '编辑属性';
+            document.getElementById('property-id').value = id;
+            document.getElementById('property-device-type-id').value = currentDeviceTypeId;
+            document.getElementById('property-name').value = name;
+            document.getElementById('property-identifier').value = identifier;
+            document.getElementById('property-data-type').value = data_type;
+            document.getElementById('property-unit').value = unit;
+            document.getElementById('property-read-write').value = read_write_flag;
+            document.getElementById('property-description').value = description;
+            document.getElementById('propertyModal').style.display = 'block';
+        }
+        
+        // 关闭属性模态框
+        function closePropertyModal() {
+            document.getElementById('propertyModal').style.display = 'none';
+        }
+        
+        // 处理属性表单提交
+        function handlePropertySubmit(e) {
+            e.preventDefault();
+            
+            const id = document.getElementById('property-id').value;
+            const device_type_id = document.getElementById('property-device-type-id').value;
+            const name = document.getElementById('property-name').value;
+            const identifier = document.getElementById('property-identifier').value;
+            const data_type = document.getElementById('property-data-type').value;
+            const unit = document.getElementById('property-unit').value;
+            const read_write_flag = document.getElementById('property-read-write').value;
+            const description = document.getElementById('property-description').value;
+            
+            const data = { name, identifier, data_type, unit, read_write_flag, description, device_type_id };
+            const method = id ? 'PUT' : 'POST';
+            const url = id ? `/api/device-properties/${id}` : '/api/device-properties';
+            
+            fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage(data.message, 'success');
+                    closePropertyModal();
+                    loadProperties(currentDeviceTypeId);
+                } else {
+                    showMessage(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMessage('操作失败', 'error');
+            });
+        }
+        
+        // 删除属性
+        function deleteProperty(id) {
+            if (!confirm('确定要删除该属性吗？')) {
+                return;
+            }
+            
+            fetch(`/api/device-properties/${id}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage(data.message, 'success');
+                    loadProperties(currentDeviceTypeId);
+                } else {
+                    showMessage(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMessage('删除失败', 'error');
+            });
+        }
+        
+        // ==================== 方法管理 ====================
+        
+        // 加载方法列表
+        function loadMethods(deviceTypeId) {
+            fetch(`/api/device-types/${deviceTypeId}/methods`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        renderMethods(data.data);
+                    } else {
+                        showMessage(data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showMessage('获取方法列表失败', 'error');
+                });
+        }
+        
+        // 渲染方法列表
+        function renderMethods(methods) {
+            const container = document.getElementById('methods-list');
+            
+            if (methods.length === 0) {
+                container.innerHTML = `
+                    <div class="no-data">
+                        <p>暂无方法信息</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = `
+                <table class="devices-table">
+                    <thead>
+                        <tr>
+                            <th>名称</th>
+                            <th>标识符</th>
+                            <th>描述</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            methods.forEach(method => {
+                html += `
+                    <tr>
+                        <td>${method.name}</td>
+                        <td>${method.identifier}</td>
+                        <td>${method.description || ''}</td>
+                        <td>
+                            <button class="action-btn" onclick="editMethod(${method.id}, '${method.name}', '${method.identifier}', '${method.description || ''}')" style="padding: 6px 12px; font-size: 14px;">编辑</button>
+                            <button class="action-btn delete-btn" onclick="deleteMethod(${method.id})" style="padding: 6px 12px; font-size: 14px;">删除</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                    </tbody>
+                </table>
+            `;
+            
+            container.innerHTML = html;
+        }
+        
+        // 打开方法模态框
+        function openMethodModal() {
+            document.getElementById('method-modal-title').textContent = '新增方法';
+            document.getElementById('method-id').value = '';
+            document.getElementById('method-device-type-id').value = currentDeviceTypeId;
+            document.getElementById('method-name').value = '';
+            document.getElementById('method-identifier').value = '';
+            document.getElementById('method-description').value = '';
+            document.getElementById('methodModal').style.display = 'block';
+        }
+        
+        // 编辑方法
+        function editMethod(id, name, identifier, description) {
+            document.getElementById('method-modal-title').textContent = '编辑方法';
+            document.getElementById('method-id').value = id;
+            document.getElementById('method-device-type-id').value = currentDeviceTypeId;
+            document.getElementById('method-name').value = name;
+            document.getElementById('method-identifier').value = identifier;
+            document.getElementById('method-description').value = description;
+            document.getElementById('methodModal').style.display = 'block';
+        }
+        
+        // 关闭方法模态框
+        function closeMethodModal() {
+            document.getElementById('methodModal').style.display = 'none';
+        }
+        
+        // 处理方法表单提交
+        function handleMethodSubmit(e) {
+            e.preventDefault();
+            
+            const id = document.getElementById('method-id').value;
+            const device_type_id = document.getElementById('method-device-type-id').value;
+            const name = document.getElementById('method-name').value;
+            const identifier = document.getElementById('method-identifier').value;
+            const description = document.getElementById('method-description').value;
+            
+            const data = { name, identifier, description, device_type_id };
+            const method = id ? 'PUT' : 'POST';
+            const url = id ? `/api/device-methods/${id}` : '/api/device-methods';
+            
+            fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage(data.message, 'success');
+                    closeMethodModal();
+                    loadMethods(currentDeviceTypeId);
+                } else {
+                    showMessage(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMessage('操作失败', 'error');
+            });
+        }
+        
+        // 删除方法
+        function deleteMethod(id) {
+            if (!confirm('确定要删除该方法吗？')) {
+                return;
+            }
+            
+            fetch(`/api/device-methods/${id}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage(data.message, 'success');
+                    loadMethods(currentDeviceTypeId);
+                } else {
+                    showMessage(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMessage('删除失败', 'error');
+            });
+        }
+        
+        // ==================== 事件管理 ====================
+        
+        // 加载事件列表
+        function loadEvents(deviceTypeId) {
+            fetch(`/api/device-types/${deviceTypeId}/events`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        renderEvents(data.data);
+                    } else {
+                        showMessage(data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showMessage('获取事件列表失败', 'error');
+                });
+        }
+        
+        // 编辑事件
+        function editEvent(id, name, identifier, level, description, condition) {
+            document.getElementById('event-modal-title').textContent = '编辑事件';
+            document.getElementById('event-id').value = id;
+            document.getElementById('event-device-type-id').value = currentDeviceTypeId;
+            document.getElementById('event-name').value = name;
+            document.getElementById('event-identifier').value = identifier;
+            document.getElementById('event-level').value = level || 'info';
+            document.getElementById('event-condition').value = condition || '';
+            document.getElementById('event-description').value = description || '';
+            document.getElementById('eventModal').style.display = 'block';
+            
+            // 加载当前设备类型的属性列表
+            loadPropertiesForEventCondition(currentDeviceTypeId);
+        }
+        
+        // 渲染事件列表
+        function renderEvents(events) {
+            const container = document.getElementById('events-list');
+            
+            if (events.length === 0) {
+                container.innerHTML = `
+                    <div class="no-data">
+                        <p>暂无事件信息</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = `
+                <table class="devices-table">
+                    <thead>
+                        <tr>
+                            <th>名称</th>
+                            <th>标识符</th>
+                            <th>级别</th>
+                            <th>条件</th>
+                            <th>描述</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            events.forEach(event => {
+                // 从描述中提取条件表达式（如果存在）
+                let condition = '';
+                if (event.condition) {
+                    condition = event.condition;
+                } else if (event.description && event.description.includes('条件:')) {
+                    const conditionMatch = event.description.match(/条件:\s*(.*)/);
+                    if (conditionMatch) {
+                        condition = conditionMatch[1];
+                    }
+                }
+                
+                html += `
+                    <tr>
+                        <td>${event.name}</td>
+                        <td>${event.identifier}</td>
+                        <td>${getEventLevelText(event.level)}</td>
+                        <td>${condition || ''}</td>
+                        <td>${event.description ? event.description.split('\n')[0] : ''}</td>
+                        <td>
+                            <button class="action-btn" onclick="editEvent(${event.id}, '${event.name}', '${event.identifier}', '${event.level}', '${event.description || ''}', '${condition || ''}')" style="padding: 6px 12px; font-size: 14px;">编辑</button>
+                            <button class="action-btn delete-btn" onclick="deleteEvent(${event.id})" style="padding: 6px 12px; font-size: 14px;">删除</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                    </tbody>
+                </table>
+            `;
+            
+            container.innerHTML = html;
+        }
+        
+        // 获取事件级别文本
+        function getEventLevelText(level) {
+            switch (level) {
+                case 'info': return '信息';
+                case 'warning': return '警告';
+                case 'error': return '错误';
+                default: return level;
+            }
+        }
+        
+        // 打开事件模态框
+        function openEventModal() {
+            document.getElementById('event-modal-title').textContent = '新增事件';
+            document.getElementById('event-id').value = '';
+            document.getElementById('event-device-type-id').value = currentDeviceTypeId;
+            document.getElementById('event-name').value = '';
+            document.getElementById('event-identifier').value = '';
+            document.getElementById('event-level').value = 'info';
+            document.getElementById('event-condition').value = '';
+            document.getElementById('event-description').value = '';
+            document.getElementById('eventModal').style.display = 'block';
+            
+            // 加载当前设备类型的属性列表
+            loadPropertiesForEventCondition(currentDeviceTypeId);
+        }
+        
+        // 加载属性列表用于事件条件选择
+        function loadPropertiesForEventCondition(deviceTypeId) {
+            fetch(`/api/device-types/${deviceTypeId}/properties`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const selector = document.getElementById('event-property-selector');
+                        // 清空现有选项
+                        selector.innerHTML = '<option value="">选择属性</option>';
+                        
+                        // 添加属性选项
+                        data.data.forEach(property => {
+                            const option = document.createElement('option');
+                            option.value = property.identifier;
+                            option.textContent = property.name;
+                            selector.appendChild(option);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('获取属性列表失败:', error);
+                });
+        }
+        
+        // 将选中的属性插入到条件表达式中
+        function insertPropertyIntoCondition() {
+            const selector = document.getElementById('event-property-selector');
+            const selectedProperty = selector.value;
+            if (selectedProperty) {
+                const conditionInput = document.getElementById('event-condition');
+                conditionInput.value += selectedProperty + ' ';
+                // 重置选择器
+                selector.value = '';
+            }
+        }
+        
+        // 将操作符插入到条件表达式中
+        function insertOperatorIntoCondition(operator) {
+            const conditionInput = document.getElementById('event-condition');
+            conditionInput.value += operator + ' ';
+        }
+        
+        // 处理事件表单提交
+        function handleEventSubmit(e) {
+            e.preventDefault();
+            
+            const id = document.getElementById('event-id').value;
+            const device_type_id = document.getElementById('event-device-type-id').value;
+            const name = document.getElementById('event-name').value;
+            const identifier = document.getElementById('event-identifier').value;
+            const level = document.getElementById('event-level').value;
+            const condition = document.getElementById('event-condition').value;
+            const description = document.getElementById('event-description').value;
+            
+            const data = { 
+                name, 
+                identifier, 
+                level, 
+                description, 
+                condition,
+                device_type_id 
+            };
+            const method = id ? 'PUT' : 'POST';
+            const url = id ? `/api/device-events/${id}` : '/api/device-events';
+            
+            fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage(data.message, 'success');
+                    closeEventModal();
+                    loadEvents(currentDeviceTypeId);
+                } else {
+                    showMessage(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMessage('操作失败', 'error');
+            });
+        }
+
+        // 关闭事件模态框
+        function closeEventModal() {
+            document.getElementById('eventModal').style.display = 'none';
+        }
+
+        // 删除事件
+        function deleteEvent(id) {
+            if (!confirm('确定要删除该事件吗？')) {
+                return;
+            }
+            
+            fetch(`/api/device-events/${id}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage(data.message, 'success');
+                    loadEvents(currentDeviceTypeId);
+                } else {
+                    showMessage(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMessage('删除失败', 'error');
+            });
+        }
+        
+        // 显示消息
+        function showMessage(message, type) {
+            // 创建消息元素
+            const messageEl = document.createElement('div');
+            messageEl.className = `message ${type}`;
+            messageEl.textContent = message;
+            
+            // 添加到页面顶部
+            const container = document.querySelector('.container');
+            container.insertBefore(messageEl, container.firstChild);
+            
+            // 3秒后自动移除消息
+            setTimeout(() => {
+                messageEl.remove();
+            }, 3000);
+        }
+        
+        // 点击模态框外部关闭模态框
+        window.onclick = function(event) {
+            if (event.target.className === 'modal') {
+                event.target.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>

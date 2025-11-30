@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>数字化运维系统</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            padding: 30px 0;
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .section-title {
+            color: white;
+            font-size: 1.5rem;
+            margin: 30px 0 20px 0;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .apps-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 25px;
+            padding: 20px;
+        }
+        
+        .app-item {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 18px;
+            padding: 20px 15px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            text-decoration: none;
+            color: inherit;
+        }
+        
+        .app-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+            background: white;
+        }
+        
+        .app-icon {
+            width: 70px;
+            height: 70px;
+            margin: 0 auto 15px;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            color: white;
+        }
+        
+        /* 不同模块的颜色 */
+        .device-management { background: linear-gradient(135deg, #A1C4FD 0%, #C2E9FB 100%); }
+        .predictive-maintenance { background: linear-gradient(135deg, #FFECD2 0%, #FCB69F 100%); }
+        .performance-analysis { background: linear-gradient(135deg, #84FAB0 0%, #8FD3F4 100%); }
+        .data-analysis { background: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%); }
+        .knowledge-center { background: linear-gradient(135deg, #D4FC79 0%, #96E6A1 100%); }
+        .modbus-info { background: linear-gradient(135deg, #fccb90 0%, #d57eeb 100%); }
+        
+        .app-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+            margin: 0;
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .apps-grid {
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+                gap: 15px;
+            }
+            
+            .app-icon {
+                width: 50px;
+                height: 50px;
+                font-size: 24px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>数字化运维系统</h1>
+            <p>一站式数字化运维监控与管理平台</p>
+        </div>
+        
+        <h2 class="section-title">应用模块</h2>
+        <div class="apps-grid">
+            <a href="/device-monitoring" class="app-item">
+                <div class="app-icon device-management">🖥️</div>
+                <p class="app-title">设备监控</p>
+            </a>
+            
+            <a href="/predictive-maintenance" class="app-item">
+                <div class="app-icon predictive-maintenance">🔮</div>
+                <p class="app-title">预测性维护</p>
+            </a>
+            
+            <a href="/performance-analysis" class="app-item">
+                <div class="app-icon performance-analysis">📈</div>
+                <p class="app-title">性能分析</p>
+            </a>
+        </div>
+        
+        <h2 class="section-title">平台功能</h2>
+        <div class="apps-grid">
+            <a href="/data-analysis" class="app-item">
+                <div class="app-icon data-analysis">📊</div>
+                <p class="app-title">数据分析</p>
+            </a>
+            
+            <a href="/knowledge-center" class="app-item">
+                <div class="app-icon knowledge-center">📚</div>
+                <p class="app-title">知识中心</p>
+            </a>
+            
+            <a href="/device-management" class="app-item">
+                <div class="app-icon device-management">⚙️</div>
+                <p class="app-title">设备管理</p>
+            </a>
+            
+            <a href="/modbus-management" class="app-item">
+                <div class="app-icon modbus-info">🔌</div>
+                <p class="app-title">数据源管理</p>
+            </a>
+        </div>
+    </div>
+</body>
+</html>

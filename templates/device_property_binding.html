@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>设备属性绑定管理</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            padding: 30px 0;
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .management-container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        
+        .form-group select, .form-group input, .form-group textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #9e9e9e 0%, #757575 100%);
+        }
+        
+        .devices-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .devices-table th, .devices-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .devices-table th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+        }
+        
+        .devices-table tr:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .no-data {
+            text-align: center;
+            padding: 30px;
+            color: #666;
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        
+        .message {
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .property-binding-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .property-binding-table th, .property-binding-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .property-binding-table th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+        }
+        
+        .property-binding-table tr:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .binding-mode-select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        
+        .modbus-select, .expression-input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        
+        .expression-container {
+            display: none;
+        }
+        
+        .modbus-container {
+            display: none;
+        }
+        
+        .property-reference {
+            background: #e3f2fd;
+            padding: 2px 4px;
+            border-radius: 3px;
+            cursor: pointer;
+            margin: 2px;
+            display: inline-block;
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .devices-table {
+                font-size: 14px;
+            }
+            
+            .devices-table th, .devices-table td {
+                padding: 8px 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>设备属性绑定管理</h1>
+            <p>管理具体设备属性与Modbus寄存器的绑定关系</p>
+        </div>
+        
+        <div class="management-container">
+            <h2 id="device-info">设备属性绑定</h2>
+            
+            <div id="property-bindings-container">
+                <div class="no-data">加载中...</div>
+            </div>
+            
+            <button id="save-all-btn" class="btn" style="margin-top: 20px; display: none;">保存所有绑定</button>
+            
+            <a href="/device-management" class="back-link">返回设备管理</a>
+        </div>
+    </div>
+    
+    <script>
+        // 全局变量
+        let currentDeviceId = null;
+        let currentDevice = null;
+        let modbusPoints = [];
+        let deviceProperties = [];
+        
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 获取URL中的设备ID参数
+            const urlParams = new URLSearchParams(window.location.search);
+            const deviceId = urlParams.get('device_id');
+            
+            if (deviceId) {
+                currentDeviceId = parseInt(deviceId);
+                loadDeviceData(currentDeviceId);
+                loadModbusPoints();
+            } else {
+                document.getElementById('property-bindings-container').innerHTML = '<div class="no-data">未指定设备，请从设备管理页面进入</div>';
+            }
+        });
+        
+        // 加载设备数据
+        function loadDeviceData(deviceId) {
+            // 获取设备信息
+            fetch('/api/device-monitoring-data')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const device = data.devices.find(d => d.id == deviceId);
+                        if (device) {
+                            currentDevice = device;
+                            document.getElementById('device-info').textContent = `设备属性绑定: ${device.name} (${device.code})`;
+                            
+                            // 获取设备类型ID
+                            return fetch('/api/device-types')
+                                .then(response => response.json())
+                                .then(typeData => {
+                                    if (typeData.success) {
+                                        const deviceType = typeData.data.find(dt => dt.name === device.type);
+                                        if (deviceType) {
+                                            // 加载设备属性
+                                            return fetch(`/api/device-types/${deviceType.id}/properties`)
+                                                .then(response => response.json())
+                                                .then(propData => {
+                                                    if (propData.success) {
+                                                        deviceProperties = propData.data;
+                                                        loadPropertyBindings();
+                                                    }
+                                                });
+                                        }
+                                    }
+                                });
+                        } else {
+                            document.getElementById('property-bindings-container').innerHTML = '<div class="no-data">未找到指定设备</div>';
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('加载设备数据失败:', error);
+                    document.getElementById('property-bindings-container').innerHTML = '<div class="no-data">加载设备数据失败</div>';
+                });
+        }
+        
+        // 加载Modbus点位列表
+        function loadModbusPoints() {
+            fetch('/api/modbus-points')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        modbusPoints = data.data;
+                    }
+                })
+                .catch(error => {
+                    console.error('加载Modbus点位失败:', error);
+                });
+        }
+        
+        // 加载属性绑定信息
+        function loadPropertyBindings() {
+            if (!currentDeviceId || !deviceProperties.length) return;
+            
+            // 获取当前设备的所有属性绑定
+            Promise.all(deviceProperties.map(property => 
+                fetch(`/api/device/${currentDeviceId}/property/${property.id}/modbus-binding`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success && data.data) {
+                            return {...property, binding: data.data};
+                        } else {
+                            return {...property, binding: null};
+                        }
+                    })
+            ))
+            .then(propertiesWithBindings => {
+                renderPropertyBindings(propertiesWithBindings);
+            })
+            .catch(error => {
+                console.error('加载属性绑定信息失败:', error);
+                document.getElementById('property-bindings-container').innerHTML = '<div class="no-data">加载属性绑定信息失败</div>';
+            });
+        }
+        
+        // 渲染属性绑定表格
+        function renderPropertyBindings(properties) {
+            const container = document.getElementById('property-bindings-container');
+            
+            if (properties.length === 0) {
+                container.innerHTML = '<div class="no-data">该设备暂无属性定义</div>';
+                return;
+            }
+            
+            let html = `
+                <table class="property-binding-table">
+                    <thead>
+                        <tr>
+                            <th>属性名称</th>
+                            <th>标识符</th>
+                            <th>数据类型</th>
+                            <th>单位</th>
+                            <th>绑定方式</th>
+                            <th>绑定配置</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            properties.forEach(property => {
+                // 构建Modbus点位选项
+                let modbusOptions = '<option value="">不绑定</option>';
+                modbusPoints.forEach(point => {
+                    const selected = property.binding && property.binding.modbus_point_id == point.id ? 'selected' : '';
+                    modbusOptions += `<option value="${point.id}" ${selected}>${point.name} (地址: ${point.address})</option>`;
+                });
+                
+                // 获取绑定方式
+                const bindingMode = property.binding ? 
+                    (property.binding.modbus_point_id ? 'modbus' : 
+                     (property.binding.calculation_expression ? 'calculation' : '')) : '';
+                
+                // 获取计算表达式
+                const calculationExpression = property.binding ? (property.binding.calculation_expression || '') : '';
+                
+                html += `
+                    <tr>
+                        <td>${property.name}</td>
+                        <td>${property.identifier}</td>
+                        <td>${property.data_type}</td>
+                        <td>${property.unit || ''}</td>
+                        <td>
+                            <select class="binding-mode-select" data-property-id="${property.id}">
+                                <option value="">未绑定</option>
+                                <option value="modbus" ${bindingMode === 'modbus' ? 'selected' : ''}>寄存器读取</option>
+                                <option value="calculation" ${bindingMode === 'calculation' ? 'selected' : ''}>计算方式</option>
+                            </select>
+                        </td>
+                        <td>
+                            <div class="modbus-container" id="modbus-container-${property.id}" style="${bindingMode === 'modbus' ? 'display: block;' : 'display: none;'}">
+                                <select class="modbus-select" data-property-id="${property.id}">
+                                    ${modbusOptions}
+                                </select>
+                            </div>
+                            <div class="expression-container" id="expression-container-${property.id}" style="${bindingMode === 'calculation' ? 'display: block;' : 'display: none;'}">
+                                <textarea class="expression-input" data-property-id="${property.id}" placeholder="输入计算表达式，如: temperature * 1.8 + 32">${calculationExpression}</textarea>
+                                <div style="margin-top: 5px;">
+                                    <small>可引用的属性:</small>
+                                    ${deviceProperties.map(prop => 
+                                        `<span class="property-reference" onclick="insertPropertyIdentifier('${prop.identifier}', ${property.id})">${prop.identifier}</span>`
+                                    ).join('')}
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                    </tbody>
+                </table>
+            `;
+            
+            container.innerHTML = html;
+            document.getElementById('save-all-btn').style.display = 'inline-block';
+            
+            // 绑定方式选择事件
+            document.querySelectorAll('.binding-mode-select').forEach(select => {
+                select.addEventListener('change', function() {
+                    const propertyId = this.getAttribute('data-property-id');
+                    const mode = this.value;
+                    
+                    // 隐藏所有容器
+                    document.getElementById(`modbus-container-${propertyId}`).style.display = 'none';
+                    document.getElementById(`expression-container-${propertyId}`).style.display = 'none';
+                    
+                    // 显示选中的容器
+                    if (mode === 'modbus') {
+                        document.getElementById(`modbus-container-${propertyId}`).style.display = 'block';
+                    } else if (mode === 'calculation') {
+                        document.getElementById(`expression-container-${propertyId}`).style.display = 'block';
+                    }
+                });
+            });
+            
+            // 绑定保存按钮事件
+            document.getElementById('save-all-btn').addEventListener('click', saveAllBindings);
+        }
+        
+        // 插入属性标识符到表达式中
+        function insertPropertyIdentifier(identifier, propertyId) {
+            const textarea = document.querySelector(`.expression-input[data-property-id="${propertyId}"]`);
+            const startPos = textarea.selectionStart;
+            const endPos = textarea.selectionEnd;
+            const text = textarea.value;
+            
+            textarea.value = text.substring(0, startPos) + identifier + text.substring(endPos);
+            textarea.focus();
+            
+            // 设置光标位置到插入文本之后
+            const newCursorPos = startPos + identifier.length;
+            textarea.setSelectionRange(newCursorPos, newCursorPos);
+        }
+        
+        // 保存所有绑定
+        function saveAllBindings() {
+            if (!currentDeviceId) return;
+            
+            // 收集所有绑定数据但不立即发送请求
+            const bindingData = [];
+            const bindingModeSelects = document.querySelectorAll('.binding-mode-select');
+            
+            bindingModeSelects.forEach(select => {
+                const propertyId = select.getAttribute('data-property-id');
+                const mode = select.value;
+                
+                let data = {};
+                
+                if (mode === 'modbus') {
+                    const modbusSelect = document.querySelector(`.modbus-select[data-property-id="${propertyId}"]`);
+                    data = {
+                        modbus_point_id: modbusSelect.value || null,
+                        calculation_expression: null
+                    };
+                } else if (mode === 'calculation') {
+                    const expressionInput = document.querySelector(`.expression-input[data-property-id="${propertyId}"]`);
+                    data = {
+                        modbus_point_id: null,
+                        calculation_expression: expressionInput.value || null
+                    };
+                } else {
+                    // 未绑定
+                    data = {
+                        modbus_point_id: null,
+                        calculation_expression: null
+                    };
+                }
+                
+                bindingData.push({
+                    propertyId: propertyId,
+                    data: data
+                });
+            });
+            
+            // 发送所有请求
+            const promises = bindingData.map(item => {
+                return fetch(`/api/device/${currentDeviceId}/property/${item.propertyId}/modbus-binding`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(item.data)
+                })
+                .then(response => response.json())
+                .then(result => {
+                    return {
+                        propertyId: item.propertyId,
+                        success: result.success,
+                        message: result.message
+                    };
+                });
+            });
+            
+            Promise.all(promises)
+                .then(results => {
+                    const allSuccess = results.every(result => result.success);
+                    if (allSuccess) {
+                        showMessage('所有绑定保存成功', 'success');
+                        // 重新加载绑定信息
+                        loadPropertyBindings();
+                    } else {
+                        // 部分失败，显示详细错误信息但保持当前界面
+                        let errorMessage = '部分绑定保存失败:';
+                        results.forEach(result => {
+                            if (!result.success) {
+                                const property = deviceProperties.find(p => p.id == result.propertyId);
+                                const propertyName = property ? property.name : '未知属性';
+                                errorMessage += `\n- ${propertyName}: ${result.message}`;
+                            }
+                        });
+                        showMessage(errorMessage, 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('保存绑定失败:', error);
+                    showMessage('保存绑定失败: ' + error.message, 'error');
+                });
+        }
+        
+        // 显示消息
+        function showMessage(message, type) {
+            // 创建消息元素
+            const messageEl = document.createElement('div');
+            messageEl.className = `message ${type}`;
+            messageEl.textContent = message;
+            
+            // 添加到页面顶部
+            const container = document.querySelector('.container');
+            container.insertBefore(messageEl, container.firstChild);
+            
+            // 3秒后自动移除消息
+            setTimeout(() => {
+                messageEl.remove();
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

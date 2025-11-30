@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>数据分析项目管理</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            padding: 30px 0;
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .management-container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+        
+        .projects-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        .projects-table th,
+        .projects-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .projects-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+        
+        .projects-table tr:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .action-btn {
+            padding: 5px 10px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        
+        .edit-btn {
+            background-color: #ffc107;
+            color: #212529;
+        }
+        
+        .view-btn {
+            background-color: #17a2b8;
+            color: white;
+        }
+        
+        .delete-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.4);
+        }
+        
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 600px;
+            border-radius: 10px;
+        }
+        
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .close:hover,
+        .close:focus {
+            color: black;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .projects-table {
+                font-size: 14px;
+            }
+            
+            .projects-table th,
+            .projects-table td {
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>数据分析项目管理</h1>
+            <p>管理历史数据分析项目</p>
+        </div>
+        
+        <div class="management-container">
+            <div style="text-align: right; margin-bottom: 20px;">
+                <button class="btn" onclick="openCreateModal()">新建项目</button>
+            </div>
+            
+            <table class="projects-table">
+                <thead>
+                    <tr>
+                        <th>项目名称</th>
+                        <th>描述</th>
+                        <th>分析类型</th>
+                        <th>创建时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="projects-list">
+                    <!-- 项目列表将通过JavaScript动态填充 -->
+                </tbody>
+            </table>
+            
+            <a href="/" class="back-link">返回首页</a>
+        </div>
+    </div>
+    
+    <!-- 新建/编辑项目模态框 -->
+    <div id="project-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2 id="modal-title">新建项目</h2>
+            <form id="project-form">
+                <input type="hidden" id="project-id">
+                <div class="form-group">
+                    <label for="project-name">项目名称 *</label>
+                    <input type="text" id="project-name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="project-description">项目描述</label>
+                    <textarea id="project-description" rows="3"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="analysis-type">分析类型 *</label>
+                    <select id="analysis-type" required>
+                        <option value="">请选择分析类型</option>
+                        <option value="descriptive">描述性分析</option>
+                        <option value="diagnostic">诊断性分析</option>
+                        <option value="predictive">预测性分析</option>
+                        <option value="prescriptive">决策性分析</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <button type="submit" class="btn">保存项目</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        // 全局变量
+        let currentProjectId = null;
+        
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadProjects();
+            
+            // 设置表单提交事件
+            document.getElementById('project-form').addEventListener('submit', saveProject);
+        });
+        
+        // 加载项目列表
+        function loadProjects() {
+            fetch('/api/data-analysis-projects')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const tbody = document.getElementById('projects-list');
+                        tbody.innerHTML = '';
+                        
+                        data.data.forEach(project => {
+                            // 将分析类型代码转换为中文显示
+                            let analysisTypeText = '';
+                            switch(project.analysis_type) {
+                                case 'descriptive':
+                                    analysisTypeText = '描述性分析';
+                                    break;
+                                case 'diagnostic':
+                                    analysisTypeText = '诊断性分析';
+                                    break;
+                                case 'predictive':
+                                    analysisTypeText = '预测性分析';
+                                    break;
+                                case 'prescriptive':
+                                    analysisTypeText = '决策性分析';
+                                    break;
+                                default:
+                                    analysisTypeText = project.analysis_type || '';
+                            }
+                            
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td>${project.name}</td>
+                                <td>${project.description || ''}</td>
+                                <td>${analysisTypeText}</td>
+                                <td>${new Date(project.created_at).toLocaleString()}</td>
+                                <td class="action-buttons">
+                                    <a href="/data-analysis/project/${project.id}" class="action-btn view-btn">查看</a>
+                                    <button class="action-btn edit-btn" onclick="editProject(${project.id})">编辑</button>
+                                    <button class="action-btn delete-btn" onclick="deleteProject(${project.id})">删除</button>
+                                </td>
+                            `;
+                            tbody.appendChild(row);
+                        });
+                    } else {
+                        alert('加载项目列表失败: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('加载项目列表失败:', error);
+                    alert('加载项目列表失败，请查看控制台了解详情');
+                });
+        }
+        
+        // 打开创建项目模态框
+        function openCreateModal() {
+            currentProjectId = null;
+            document.getElementById('modal-title').textContent = '新建项目';
+            document.getElementById('project-form').reset();
+            document.getElementById('project-id').value = '';
+            document.getElementById('project-modal').style.display = 'block';
+        }
+        
+        // 编辑项目
+        function editProject(projectId) {
+            fetch(`/api/data-analysis-projects/${projectId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const project = data.data;
+                        currentProjectId = projectId;
+                        document.getElementById('modal-title').textContent = '编辑项目';
+                        document.getElementById('project-id').value = project.id;
+                        document.getElementById('project-name').value = project.name;
+                        document.getElementById('project-description').value = project.description || '';
+                        document.getElementById('analysis-type').value = project.analysis_type || '';
+                        
+                        document.getElementById('project-modal').style.display = 'block';
+                    } else {
+                        alert('加载项目信息失败: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('加载项目信息失败:', error);
+                    alert('加载项目信息失败，请查看控制台了解详情');
+                });
+        }
+        
+        // 关闭模态框
+        function closeModal() {
+            document.getElementById('project-modal').style.display = 'none';
+        }
+        
+        // 保存项目
+        function saveProject(event) {
+            event.preventDefault();
+            
+            const projectId = document.getElementById('project-id').value;
+            const name = document.getElementById('project-name').value;
+            const description = document.getElementById('project-description').value;
+            const analysisType = document.getElementById('analysis-type').value;
+            
+            if (!name || !analysisType) {
+                alert('请填写所有必填字段');
+                return;
+            }
+            
+            const data = {
+                name: name,
+                description: description,
+                analysis_type: analysisType
+            };
+            
+            let url = '/api/data-analysis-projects';
+            let method = 'POST';
+            
+            if (projectId) {
+                url += '/' + projectId;
+                method = 'PUT';
+            }
+            
+            fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(projectId ? '项目更新成功' : '项目创建成功');
+                    closeModal();
+                    loadProjects();
+                } else {
+                    alert('保存项目失败: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('保存项目失败:', error);
+                alert('保存项目失败，请查看控制台了解详情');
+            });
+        }
+        
+        // 删除项目
+        function deleteProject(projectId) {
+            if (confirm('确定要删除这个项目吗？')) {
+                fetch(`/api/data-analysis-projects/${projectId}`, {
+                    method: 'DELETE'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('项目删除成功');
+                        loadProjects();
+                    } else {
+                        alert('删除项目失败: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('删除项目失败:', error);
+                    alert('删除项目失败，请查看控制台了解详情');
+                });
+            }
+        }
+        
+        // 点击模态框外部关闭
+        window.onclick = function(event) {
+            const modal = document.getElementById('project-modal');
+            if (event.target == modal) {
+                closeModal();
+            }
+        }
+    </script>
+</body>
+</html>

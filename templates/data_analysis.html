@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>数据分析</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            padding: 30px 0;
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .management-container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+        
+        .step-container {
+            margin-bottom: 30px;
+            padding: 20px;
+            border-radius: 10px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+        }
+        
+        .step-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .step-number {
+            width: 30px;
+            height: 30px;
+            background-color: #667eea;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        
+        .step-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin-top: 20px;
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .form-group {
+            flex: 1;
+            min-width: 200px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        
+        .form-group select, .form-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+        
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .upload-area {
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            margin: 15px 0;
+            transition: border-color 0.3s;
+        }
+        
+        .upload-area:hover {
+            border-color: #667eea;
+        }
+        
+        .upload-area.dragover {
+            border-color: #667eea;
+            background-color: #e3eeff;
+        }
+        
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+        
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        
+        .tab-container {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            background-color: #e9ecef;
+            border: none;
+            cursor: pointer;
+            flex: 1;
+            text-align: center;
+        }
+        
+        .tab.active {
+            background-color: #667eea;
+            color: white;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .form-row {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>数据分析</h1>
+            <p>基于历史数据的深度分析和洞察</p>
+        </div>
+        
+        <div class="management-container">
+            <!-- 步骤1：数据导入 -->
+            <div class="step-container">
+                <div class="step-header">
+                    <div class="step-number">1</div>
+                    <div class="step-title">数据导入</div>
+                </div>
+                
+                <div class="tab-container">
+                    <button class="tab active" onclick="switchTab('live-tab')">实时数据导入</button>
+                    <button class="tab" onclick="switchTab('file-tab')">文件数据导入</button>
+                </div>
+                
+                <div id="live-tab" class="tab-content active">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="device-select">选择设备:</label>
+                            <select id="device-select">
+                                <option value="">请选择设备</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="property-select">选择属性:</label>
+                            <select id="property-select" disabled>
+                                <option value="">请先选择设备</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <button class="btn" onclick="importLiveData()" id="import-live-btn" disabled>导入实时数据</button>
+                </div>
+                
+                <div id="file-tab" class="tab-content">
+                    <div class="upload-area" id="upload-area">
+                        <p>拖拽Excel文件到这里或点击选择文件</p>
+                        <p class="small">支持.xls和.xlsx格式</p>
+                        <div class="file-input-wrapper">
+                            <button class="btn">选择文件</button>
+                            <input type="file" id="file-input" accept=".xls,.xlsx">
+                        </div>
+                        <div id="file-name"></div>
+                    </div>
+                    
+                    <button class="btn" onclick="importFileData()" id="import-file-btn" disabled>导入文件数据</button>
+                </div>
+            </div>
+            
+            <!-- 步骤2：数据分析 -->
+            <div class="step-container">
+                <div class="step-header">
+                    <div class="step-number">2</div>
+                    <div class="step-title">数据分析</div>
+                </div>
+                <div id="analysis-description">
+                    <p>根据所选分析类型进行相应分析：</p>
+                    <ul>
+                        <li><strong>描述性分析</strong>：总结和描述数据的主要特征</li>
+                        <li><strong>诊断性分析</strong>：分析数据中的异常和趋势原因</li>
+                        <li><strong>预测性分析</strong>：基于历史数据预测未来趋势</li>
+                        <li><strong>决策性分析</strong>：提供优化建议和决策支持</li>
+                    </ul>
+                </div>
+                <button class="btn" onclick="performAnalysis()" id="perform-analysis-btn" disabled>执行分析</button>
+            </div>
+            
+            <!-- 步骤3：结果展示 -->
+            <div class="step-container">
+                <div class="step-header">
+                    <div class="step-number">3</div>
+                    <div class="step-title">结果展示</div>
+                </div>
+                
+                <div class="chart-container">
+                    <canvas id="analysisChart"></canvas>
+                </div>
+                
+                <div style="text-align: center; margin-top: 20px;">
+                    <button class="btn" onclick="showTrendChart()" id="show-trend-btn" disabled>查看趋势图</button>
+                </div>
+            </div>
+            
+            <!-- 步骤4：报告 -->
+            <div class="step-container">
+                <div class="step-header">
+                    <div class="step-number">4</div>
+                    <div class="step-title">报告</div>
+                </div>
+                <p>报告生成功能即将推出</p>
+            </div>
+            
+            <!-- 新增步骤：统计分析 -->
+            <div class="step-container">
+                <div class="step-header">
+                    <div class="step-number">5</div>
+                    <div class="step-title">统计分析</div>
+                </div>
+                <div id="statistics-container" style="display: none;">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>最小值:</label>
+                            <div id="stat-min-value">-</div>
+                        </div>
+                        <div class="form-group">
+                            <label>最大值:</label>
+                            <div id="stat-max-value">-</div>
+                        </div>
+                        <div class="form-group">
+                            <label>平均值:</label>
+                            <div id="stat-average-value">-</div>
+                        </div>
+                        <div class="form-group">
+                            <label>中位数:</label>
+                            <div id="stat-median-value">-</div>
+                        </div>
+                    </div>
+                </div>
+                <button class="btn" onclick="calculateStatistics()" id="calculate-statistics-btn" disabled>计算统计数据</button>
+            </div>
+            
+            <a href="/data-analysis" class="back-link">返回项目列表</a>
+        </div>
+    </div>
+    
+    <script>
+        // 全局变量
+        let devices = [];
+        let currentChart = null;
+        let importedData = null;
+        let projectId = {{ project_id|tojson if project_id else 'null' }};
+        
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadProjectDetails();
+            loadDevices();
+            setupFileUpload();
+        });
+        
+        // 加载项目详情
+        function loadProjectDetails() {
+            if (projectId) {
+                fetch(`/api/data-analysis-projects/${projectId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            const project = data.data;
+                            // 将分析类型代码转换为中文显示
+                            let analysisTypeText = '';
+                            switch(project.analysis_type) {
+                                case 'descriptive':
+                                    analysisTypeText = '描述性分析';
+                                    break;
+                                case 'diagnostic':
+                                    analysisTypeText = '诊断性分析';
+                                    break;
+                                case 'predictive':
+                                    analysisTypeText = '预测性分析';
+                                    break;
+                                case 'prescriptive':
+                                    analysisTypeText = '决策性分析';
+                                    break;
+                                default:
+                                    analysisTypeText = project.analysis_type || '';
+                            }
+                            
+                            document.querySelector('.header h1').textContent = `数据分析 - ${project.name} (${analysisTypeText})`;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('加载项目详情失败:', error);
+                    });
+            }
+        }
+        
+        // 设置文件上传功能
+        function setupFileUpload() {
+            const uploadArea = document.getElementById('upload-area');
+            const fileInput = document.getElementById('file-input');
+            const fileName = document.getElementById('file-name');
+            
+            // 拖拽事件处理
+            uploadArea.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+            
+            uploadArea.addEventListener('dragleave', function() {
+                uploadArea.classList.remove('dragover');
+            });
+            
+            uploadArea.addEventListener('drop', function(e) {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                
+                if (e.dataTransfer.files.length) {
+                    fileInput.files = e.dataTransfer.files;
+                    fileName.textContent = e.dataTransfer.files[0].name;
+                    document.getElementById('import-file-btn').disabled = false;
+                }
+            });
+            
+            // 文件选择事件处理
+            fileInput.addEventListener('change', function() {
+                if (this.files.length) {
+                    fileName.textContent = this.files[0].name;
+                    document.getElementById('import-file-btn').disabled = false;
+                } else {
+                    fileName.textContent = '';
+                    document.getElementById('import-file-btn').disabled = true;
+                }
+            });
+        }
+        
+        // 切换标签页
+        function switchTab(tabId) {
+            // 隐藏所有标签内容
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // 移除所有标签的活动状态
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // 显示选中的标签内容
+            document.getElementById(tabId).classList.add('active');
+            
+            // 设置选中标签为活动状态
+            event.currentTarget.classList.add('active');
+        }
+        
+        // 加载设备列表
+        function loadDevices() {
+            fetch('/api/device-monitoring-data')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        devices = data.devices;
+                        const deviceSelect = document.getElementById('device-select');
+                        deviceSelect.innerHTML = '<option value="">请选择设备</option>';
+                        
+                        data.devices.forEach(device => {
+                            const option = document.createElement('option');
+                            option.value = device.id;
+                            option.textContent = device.name;
+                            deviceSelect.appendChild(option);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('加载设备列表失败:', error);
+                });
+        }
+        
+        // 当设备选择改变时
+        document.getElementById('device-select').addEventListener('change', function() {
+            const deviceId = this.value;
+            const propertySelect = document.getElementById('property-select');
+            const importBtn = document.getElementById('import-live-btn');
+            
+            if (deviceId) {
+                // 启用属性选择器
+                propertySelect.disabled = false;
+                propertySelect.innerHTML = '<option value="">加载中...</option>';
+                
+                // 获取设备类型名称
+                const device = devices.find(d => d.id == deviceId);
+                if (device) {
+                    // 获取设备属性
+                    fetch(`/api/device-type/by-name/${encodeURIComponent(device.type)}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                propertySelect.innerHTML = '<option value="">请选择属性</option>';
+                                data.properties.forEach(property => {
+                                    const option = document.createElement('option');
+                                    option.value = property.id;
+                                    option.textContent = property.name;
+                                    propertySelect.appendChild(option);
+                                });
+                            } else {
+                                propertySelect.innerHTML = '<option value="">加载失败</option>';
+                            }
+                        })
+                        .catch(error => {
+                            console.error('加载属性列表失败:', error);
+                            propertySelect.innerHTML = '<option value="">加载失败</option>';
+                        });
+                } else {
+                    propertySelect.innerHTML = '<option value="">加载失败</option>';
+                }
+            } else {
+                // 禁用属性选择器
+                propertySelect.disabled = true;
+                propertySelect.innerHTML = '<option value="">请先选择设备</option>';
+                importBtn.disabled = true;
+            }
+        });
+        
+        // 当属性选择改变时
+        document.getElementById('property-select').addEventListener('change', function() {
+            const deviceId = document.getElementById('device-select').value;
+            const propertyId = this.value;
+            const importBtn = document.getElementById('import-live-btn');
+            
+            // 只有当设备和属性都选择了才启用导入按钮
+            importBtn.disabled = !(deviceId && propertyId);
+        });
+        
+        // 导入实时数据
+        function importLiveData() {
+            const deviceId = document.getElementById('device-select').value;
+            const propertyId = document.getElementById('property-select').value;
+            
+            if (!deviceId || !propertyId) {
+                alert('请选择设备和属性');
+                return;
+            }
+            
+            // 显示加载状态
+            const importBtn = document.getElementById('import-live-btn');
+            const originalText = importBtn.textContent;
+            importBtn.textContent = '导入中...';
+            importBtn.disabled = true;
+            
+            // 获取历史数据
+            fetch(`/api/property-history/${deviceId}/${propertyId}?limit=1000`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        importedData = data.data;
+                        document.getElementById('show-trend-btn').disabled = false;
+                        document.getElementById('perform-analysis-btn').disabled = false;
+                        alert('数据导入成功！');
+                    } else {
+                        alert('获取历史数据失败: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('导入失败:', error);
+                    alert('导入失败，请查看控制台了解详情');
+                })
+                .finally(() => {
+                    // 恢复按钮状态
+                    importBtn.textContent = originalText;
+                    importBtn.disabled = false;
+                });
+        }
+        
+        // 导入文件数据
+        function importFileData() {
+            const fileInput = document.getElementById('file-input');
+            if (!fileInput.files.length) {
+                alert('请选择一个文件');
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            // 显示加载状态
+            const importBtn = document.getElementById('import-file-btn');
+            const originalText = importBtn.textContent;
+            importBtn.textContent = '导入中...';
+            importBtn.disabled = true;
+            
+            // 上传文件
+            fetch('/api/upload-excel', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 模拟导入的数据
+                    importedData = [];
+                    for (let i = 0; i < 50; i++) {
+                        const now = new Date();
+                        const pastDate = new Date(now.getTime() - i * 60000); // 每分钟一个数据点
+                        importedData.push({
+                            timestamp: pastDate.toISOString(),
+                            value: (Math.random() * 100 + 50).toFixed(2)
+                        });
+                    }
+                    
+                    document.getElementById('show-trend-btn').disabled = false;
+                    document.getElementById('perform-analysis-btn').disabled = false;
+                    alert('文件数据导入成功！注意：在实际应用中，这里会解析Excel文件内容。');
+                } else {
+                    alert('文件上传失败: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('上传失败:', error);
+                alert('上传失败，请查看控制台了解详情');
+            })
+            .finally(() => {
+                // 恢复按钮状态
+                importBtn.textContent = originalText;
+                importBtn.disabled = false;
+            });
+        }
+        
+        // 执行分析
+        function performAnalysis() {
+            if (!importedData || importedData.length === 0) {
+                alert('没有可分析的数据，请先导入数据');
+                return;
+            }
+            
+            // 在实际应用中，这里会根据项目类型执行不同的分析
+            alert('分析完成！在实际应用中，这里会根据分析类型执行相应的分析算法。');
+        }
+        
+        // 显示趋势图
+        function showTrendChart() {
+            if (!importedData || importedData.length === 0) {
+                alert('没有可显示的数据，请先导入数据');
+                return;
+            }
+            
+            renderTrendChart(importedData);
+        }
+        
+        // 渲染趋势图表
+        function renderTrendChart(data) {
+            const ctx = document.getElementById('analysisChart').getContext('2d');
+            
+            // 销毁之前的图表
+            if (currentChart) {
+                currentChart.destroy();
+            }
+            
+            currentChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.map(item => {
+                        const date = new Date(item.timestamp);
+                        return `${date.getMonth()+1}-${date.getDate()} ${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
+                    }),
+                    datasets: [{
+                        label: '属性值趋势',
+                        data: data.map(item => parseFloat(item.value)),
+                        borderColor: 'rgb(75, 192, 192)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        tension: 0.1,
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: false
+                        },
+                        x: {
+                            ticks: {
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>

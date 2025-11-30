@@ -1,0 +1,10 @@
+flask==2.3.2
+flask-sqlalchemy==3.0.5
+flask-login==0.6.3
+flask-wtf==1.1.1
+psutil==5.9.5
+requests==2.31.0
+python-dotenv==1.0.0
+pyserial==3.5
+pymodbus==3.4.1
+openpyxl==3.1.2

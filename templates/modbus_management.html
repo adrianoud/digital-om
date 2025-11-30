@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Modbus点位管理</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            padding: 30px 0;
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .management-container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .action-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+        }
+        
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+        
+        .delete-btn {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+            padding: 6px 12px;
+            font-size: 14px;
+        }
+        
+        .server-control-btn {
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            border: none;
+            transition: all 0.3s ease;
+        }
+        
+        .start-btn {
+            background: linear-gradient(135deg, #28a745 0%, #218838 100%);
+            color: white;
+        }
+        
+        .stop-btn {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            color: white;
+        }
+        
+        .server-control-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+        
+        .server-control-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .devices-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .devices-table th, .devices-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .devices-table th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+        }
+        
+        .devices-table tr:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .no-data {
+            text-align: center;
+            padding: 30px;
+            color: #666;
+        }
+        
+        .message {
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.4);
+        }
+        
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 500px;
+            border-radius: 10px;
+        }
+        
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        
+        .form-group input[type="checkbox"] {
+            width: auto;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+        
+        .server-info {
+            background-color: #e9f7ef;
+            border-left: 4px solid #28a745;
+            padding: 10px 15px;  /* 减小高度 */
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        
+        .server-status-running {
+            color: #28a745;
+            font-weight: bold;
+        }
+        
+        .server-status-stopped {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        
+        .control-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        @media (max-width: 768px) {
+            .action-buttons {
+                flex-direction: column;
+            }
+            
+            .action-btn {
+                text-align: center;
+            }
+            
+            .devices-table {
+                font-size: 14px;
+            }
+            
+            .devices-table th, .devices-table td {
+                padding: 8px 10px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .control-section {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Modbus点位管理</h1>
+            <p>管理Modbus模拟点位配置</p>
+        </div>
+        
+        <div class="management-container">
+            <div class="server-info">
+                <h3>服务器状态</h3>
+                <p>地址: <span id="server-host">localhost</span>:<span id="server-port">5020</span></p>
+                <p>状态: <span id="server-status" class="server-status-stopped">未知</span></p>
+                <p>点位数量: <span id="points-count">0</span></p>
+                <p>更新频率: <span id="update-interval">2</span> 秒 
+                   <button class="action-btn" onclick="changeUpdateInterval()" style="padding: 4px 8px; font-size: 12px; margin-left: 10px;">修改</button>
+                </p>
+            </div>
+            
+            <div class="control-section">
+                <button id="start-server-btn" class="server-control-btn start-btn" onclick="startServer()">启动服务器</button>
+                <button id="stop-server-btn" class="server-control-btn stop-btn" onclick="stopServer()" disabled>停止服务器</button>
+                <a href="/" class="back-link">返回首页</a>
+            </div>
+            
+            <div class="action-buttons">
+                <button class="action-btn" onclick="openCreateModal()">新增点位</button>
+            </div>
+            
+            <h2>点位列表</h2>
+            
+            <div id="points-container">
+                <div class="no-data">
+                    <p>加载中...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 创建/编辑点位模态框 -->
+    <div id="pointModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closePointModal()">&times;</span>
+            <h2 id="modal-title">新增点位</h2>
+            <form id="point-form">
+                <input type="hidden" id="point-id">
+                <div class="form-group">
+                    <label for="point-name">点位名称 *</label>
+                    <input type="text" id="point-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="point-address">寄存器地址 *</label>
+                    <input type="number" id="point-address" min="0" required>
+                </div>
+                <div class="form-group">
+                    <label for="point-data-type">数据类型 *</label>
+                    <select id="point-data-type" required>
+                        <option value="int">整数 (int)</option>
+                        <option value="float" selected>浮点数 (float)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="point-min-value">最小值 *</label>
+                    <input type="number" id="point-min-value" step="0.01" value="0" required>
+                </div>
+                <div class="form-group">
+                    <label for="point-max-value">最大值 *</label>
+                    <input type="number" id="point-max-value" step="0.01" value="100" required>
+                </div>
+                <div class="form-group">
+                    <label for="point-unit">单位</label>
+                    <input type="text" id="point-unit">
+                </div>
+                <div class="form-group">
+                    <label for="point-description">描述</label>
+                    <textarea id="point-description" rows="2"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="point-is-active" checked> 启用
+                    </label>
+                </div>
+                <button type="submit" class="btn">保存</button>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        // 页面加载完成后获取点位列表和服务器状态
+        document.addEventListener('DOMContentLoaded', function() {
+            loadPoints();
+            updateServerStatus();
+            
+            // 每5秒更新一次服务器状态
+            setInterval(updateServerStatus, 5000);
+            
+            // 绑定表单提交事件
+            document.getElementById('point-form').addEventListener('submit', handlePointSubmit);
+        });
+        
+        // 获取服务器状态
+        function updateServerStatus() {
+            fetch('/api/modbus-server/status')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const statusElement = document.getElementById('server-status');
+                        const startBtn = document.getElementById('start-server-btn');
+                        const stopBtn = document.getElementById('stop-server-btn');
+                        
+                        if (data.data.running) {
+                            statusElement.textContent = '运行中';
+                            statusElement.className = 'server-status-running';
+                            startBtn.disabled = true;
+                            stopBtn.disabled = false;
+                        } else {
+                            statusElement.textContent = '已停止';
+                            statusElement.className = 'server-status-stopped';
+                            startBtn.disabled = false;
+                            stopBtn.disabled = true;
+                        }
+                        
+                        document.getElementById('server-host').textContent = data.data.host;
+                        document.getElementById('server-port').textContent = data.data.port;
+                        
+                        // 获取当前更新间隔
+                        fetch('/api/modbus-server/update-interval')
+                            .then(response => response.json())
+                            .then(intervalData => {
+                                if (intervalData.success) {
+                                    document.getElementById('update-interval').textContent = intervalData.data.interval;
+                                }
+                            })
+                            .catch(error => {
+                                console.error('获取更新间隔失败:', error);
+                            });
+                    } else {
+                        console.error('获取服务器状态失败:', data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        }
+        
+        // 启动服务器
+        function startServer() {
+            fetch('/api/modbus-server/start', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage(data.message, 'success');
+                } else {
+                    showMessage(data.message, 'error');
+                }
+                // 更新服务器状态
+                setTimeout(updateServerStatus, 1000);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMessage('启动服务器失败', 'error');
+            });
+        }
+        
+        // 停止服务器
+        function stopServer() {
+            if (!confirm('确定要停止Modbus服务器吗？')) {
+                return;
+            }
+            
+            fetch('/api/modbus-server/stop', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage(data.message, 'success');
+                } else {
+                    showMessage(data.message, 'error');
+                }
+                // 更新服务器状态
+                setTimeout(updateServerStatus, 1000);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMessage('停止服务器失败', 'error');
+            });
+        }
+        
+        // 修改更新间隔
+        function changeUpdateInterval() {
+            const currentInterval = document.getElementById('update-interval').textContent;
+            const newInterval = prompt('请输入新的更新间隔(秒):', currentInterval);
+            
+            if (newInterval !== null) {
+                const interval = parseFloat(newInterval);
+                if (!isNaN(interval) && interval > 0) {
+                    fetch('/api/modbus-server/update-interval', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({interval: interval})
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            document.getElementById('update-interval').textContent = interval;
+                            showMessage(data.message, 'success');
+                        } else {
+                            showMessage(data.message, 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showMessage('修改更新间隔失败', 'error');
+                    });
+                } else {
+                    showMessage('请输入有效的正数', 'error');
+                }
+            }
+        }
+        
+        // 获取点位列表
+        function loadPoints() {
+            fetch('/api/modbus-points')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        renderPoints(data.data);
+                        document.getElementById('points-count').textContent = data.data.length;
+                    } else {
+                        showMessage(data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showMessage('获取点位列表失败', 'error');
+                });
+        }
+        
+        // 渲染点位列表
+        function renderPoints(points) {
+            const container = document.getElementById('points-container');
+            
+            if (points.length === 0) {
+                container.innerHTML = `
+                    <div class="no-data">
+                        <p>暂无点位信息</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = `
+                <table class="devices-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>点位名称</th>
+                            <th>寄存器地址</th>
+                            <th>数据类型</th>
+                            <th>数值范围</th>
+                            <th>单位</th>
+                            <th>当前值</th>
+                            <th>启用</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            // 获取当前点位值
+            fetch('/api/modbus-points/values')
+                .then(response => response.json())
+                .then(valuesData => {
+                    points.forEach(point => {
+                        // 获取当前值
+                        let currentValue = 'N/A';
+                        if (valuesData.success && valuesData.data && valuesData.data[point.id]) {
+                            currentValue = valuesData.data[point.id].value;
+                        }
+                        
+                        html += `
+                            <tr>
+                                <td>${point.id}</td>
+                                <td>${point.name}</td>
+                                <td>${point.address}</td>
+                                <td>${point.data_type}</td>
+                                <td>${point.min_value} ~ ${point.max_value}</td>
+                                <td>${point.unit || ''}</td>
+                                <td>${currentValue}</td>
+                                <td>${point.is_active ? '是' : '否'}</td>
+                                <td>
+                                    <button class="action-btn" onclick="editPoint(${point.id}, '${point.name}', ${point.address}, '${point.data_type}', ${point.min_value}, ${point.max_value}, '${point.unit || ''}', '${point.description || ''}', ${point.is_active})" style="padding: 6px 12px; font-size: 14px;">编辑</button>
+                                    <button class="action-btn delete-btn" onclick="deletePoint(${point.id})" style="padding: 6px 12px; font-size: 14px;">删除</button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                    
+                    html += `
+                            </tbody>
+                        </table>
+                    `;
+                    
+                    container.innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('获取点位值失败:', error);
+                    // 如果获取当前值失败，仍然显示表格但当前值列为N/A
+                    points.forEach(point => {
+                        html += `
+                            <tr>
+                                <td>${point.id}</td>
+                                <td>${point.name}</td>
+                                <td>${point.address}</td>
+                                <td>${point.data_type}</td>
+                                <td>${point.min_value} ~ ${point.max_value}</td>
+                                <td>${point.unit || ''}</td>
+                                <td>N/A</td>
+                                <td>${point.is_active ? '是' : '否'}</td>
+                                <td>
+                                    <button class="action-btn" onclick="editPoint(${point.id}, '${point.name}', ${point.address}, '${point.data_type}', ${point.min_value}, ${point.max_value}, '${point.unit || ''}', '${point.description || ''}', ${point.is_active})" style="padding: 6px 12px; font-size: 14px;">编辑</button>
+                                    <button class="action-btn delete-btn" onclick="deletePoint(${point.id})" style="padding: 6px 12px; font-size: 14px;">删除</button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                    
+                    html += `
+                            </tbody>
+                        </table>
+                    `;
+                    
+                    container.innerHTML = html;
+                });
+        }
+        
+        // 打开创建点位模态框
+        function openCreateModal() {
+            document.getElementById('modal-title').textContent = '新增点位';
+            document.getElementById('point-id').value = '';
+            document.getElementById('point-name').value = '';
+            document.getElementById('point-address').value = '';
+            document.getElementById('point-data-type').value = 'float';
+            document.getElementById('point-min-value').value = '0';
+            document.getElementById('point-max-value').value = '100';
+            document.getElementById('point-unit').value = '';
+            document.getElementById('point-description').value = '';
+            document.getElementById('point-is-active').checked = true;
+            document.getElementById('pointModal').style.display = 'block';
+        }
+        
+        // 编辑点位
+        function editPoint(id, name, address, data_type, min_value, max_value, unit, description, is_active) {
+            document.getElementById('modal-title').textContent = '编辑点位';
+            document.getElementById('point-id').value = id;
+            document.getElementById('point-name').value = name;
+            document.getElementById('point-address').value = address;
+            document.getElementById('point-data-type').value = data_type;
+            document.getElementById('point-min-value').value = min_value;
+            document.getElementById('point-max-value').value = max_value;
+            document.getElementById('point-unit').value = unit;
+            document.getElementById('point-description').value = description;
+            document.getElementById('point-is-active').checked = is_active;
+            document.getElementById('pointModal').style.display = 'block';
+        }
+        
+        // 关闭点位模态框
+        function closePointModal() {
+            document.getElementById('pointModal').style.display = 'none';
+        }
+        
+        // 处理点位表单提交
+        function handlePointSubmit(e) {
+            e.preventDefault();
+            
+            const id = document.getElementById('point-id').value;
+            const name = document.getElementById('point-name').value;
+            const address = parseInt(document.getElementById('point-address').value);
+            const data_type = document.getElementById('point-data-type').value;
+            const min_value = parseFloat(document.getElementById('point-min-value').value);
+            const max_value = parseFloat(document.getElementById('point-max-value').value);
+            const unit = document.getElementById('point-unit').value;
+            const description = document.getElementById('point-description').value;
+            const is_active = document.getElementById('point-is-active').checked;
+            
+            const data = { name, address, data_type, min_value, max_value, unit, description, is_active };
+            const method = id ? 'PUT' : 'POST';
+            const url = id ? `/api/modbus-points/${id}` : '/api/modbus-points';
+            
+            fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage(data.message, 'success');
+                    closePointModal();
+                    loadPoints();
+                } else {
+                    showMessage(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMessage('操作失败', 'error');
+            });
+        }
+        
+        // 删除点位
+        function deletePoint(id) {
+            if (!confirm('确定要删除该点位吗？')) {
+                return;
+            }
+            
+            fetch(`/api/modbus-points/${id}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage(data.message, 'success');
+                    loadPoints();
+                } else {
+                    showMessage(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMessage('删除失败', 'error');
+            });
+        }
+        
+        // 显示消息
+        function showMessage(message, type) {
+            // 创建消息元素
+            const messageEl = document.createElement('div');
+            messageEl.className = `message ${type}`;
+            messageEl.textContent = message;
+            
+            // 添加到页面顶部
+            const container = document.querySelector('.container');
+            container.insertBefore(messageEl, container.firstChild);
+            
+            // 3秒后自动移除消息
+            setTimeout(() => {
+                messageEl.remove();
+            }, 3000);
+        }
+        
+        // 点击模态框外部关闭模态框
+        window.onclick = function(event) {
+            if (event.target.className === 'modal') {
+                event.target.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>

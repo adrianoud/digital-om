@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>设备管理</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            padding: 30px 0;
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .management-container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .action-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+        }
+        
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+        
+        .delete-btn {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+            padding: 6px 12px;
+            font-size: 14px;
+        }
+        
+        .binding-btn {
+            background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%);
+            padding: 6px 12px;
+            font-size: 14px;
+        }
+        
+        .devices-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .devices-table th, .devices-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .devices-table th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+        }
+        
+        .devices-table tr:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .no-data {
+            text-align: center;
+            padding: 30px;
+            color: #666;
+        }
+        
+        .message {
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        
+        @media (max-width: 768px) {
+            .action-buttons {
+                flex-direction: column;
+            }
+            
+            .action-btn {
+                text-align: center;
+            }
+            
+            .devices-table {
+                font-size: 14px;
+            }
+            
+            .devices-table th, .devices-table td {
+                padding: 8px 10px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>设备管理</h1>
+            <p>管理数据中心的所有设备</p>
+        </div>
+        
+        <div class="management-container">
+            {% if message %}
+                <div class="message {{ message_type }}">
+                    {{ message }}
+                </div>
+            {% endif %}
+            
+            <div class="action-buttons">
+                <a href="/device-ledger" class="action-btn">新增设备台账</a>
+                <a href="/device-models" class="action-btn">设备类型管理</a>
+                <a href="/device-monitoring" class="action-btn">设备监控</a>
+            </div>
+            
+            <h2>设备台账列表</h2>
+            
+            {% if devices %}
+                <table class="devices-table">
+                    <thead>
+                        <tr>
+                            <th>设备名称</th>
+                            <th>设备编码</th>
+                            <th>设备类型</th>
+                            <th>设备型号</th>
+                            <th>采购日期</th>
+                            <th>录入时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for device in devices %}
+                            <tr>
+                                <td>{{ device.name }}</td>
+                                <td>{{ device.code }}</td>
+                                <td>{{ device.type }}</td>
+                                <td>{{ device.model }}</td>
+                                <td>{{ device.purchase_date }}</td>
+                                <td>{{ device.entry_time }}</td>
+                                <td>
+                                    <a href="/device-edit/{{ device.id }}" class="action-btn" style="padding: 6px 12px; font-size: 14px; text-decoration: none;">编辑</a>
+                                    <a href="/device-property-binding?device_id={{ device.id }}" class="action-btn binding-btn" style="padding: 6px 12px; font-size: 14px; text-decoration: none;">属性</a>
+                                    <form method="POST" style="display: inline;" onsubmit="return confirm('确定要删除该设备吗？')">
+                                        <input type="hidden" name="action" value="delete">
+                                        <input type="hidden" name="device_id" value="{{ device.id }}">
+                                        <button type="submit" class="action-btn delete-btn">删除</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <div class="no-data">
+                    <p>暂无设备台账信息</p>
+                    <p><a href="/device-ledger" class="action-btn">立即添加设备</a></p>
+                </div>
+            {% endif %}
+            
+            <a href="/" class="back-link">返回首页</a>
+        </div>
+    </div>
+</body>
+</html>
