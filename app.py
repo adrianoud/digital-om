@@ -14,7 +14,7 @@ import uuid
 from models import db, DeviceType, DeviceProperty, DeviceEvent, DeviceMethod, Device, ModbusPoint, DevicePropertyBinding, ServerConfig
 
 # 添加新的模型导入
-from models import PropertyHistory, EventHistory, DataAnalysisProject
+from models import PropertyHistory, EventHistory, DataAnalysisProject, DataAnalysisResult
 
 # 导入Modbus服务器类
 from modbus_server_db import DatabaseModbusServer
@@ -930,6 +930,7 @@ def get_device_monitoring_data():
         try:
             device_objects = Device.query.all()
             devices = [device.to_dict() for device in device_objects]
+            print(f"查询到 {len(devices)} 个设备")  # 调试信息
         except Exception as e:
             print(f"读取设备信息失败: {e}")
         
@@ -938,6 +939,7 @@ def get_device_monitoring_data():
             'devices': devices
         })
     except Exception as e:
+        print(f"获取设备监控数据时出错: {e}")  # 调试信息
         return jsonify({
             'success': False,
             'message': str(e)
@@ -1256,6 +1258,13 @@ def api_update_data_analysis_project(id):
         project.name = data.get('name', project.name)
         project.description = data.get('description', project.description)
         project.analysis_type = data.get('analysis_type', project.analysis_type)
+        # 新增字段
+        if 'selected_points' in data:
+            project.selected_points = data['selected_points']
+        if 'analysis_instances' in data:
+            project.analysis_instances = data['analysis_instances']
+        if 'conclusion' in data:
+            project.conclusion = data['conclusion']
         
         db.session.commit()
         
@@ -1289,6 +1298,102 @@ def api_delete_data_analysis_project(id):
         return jsonify({
             'success': True,
             'message': '项目删除成功'
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+
+# 数据分析结果API
+@app.route('/api/data-analysis-results', methods=['POST'])
+def api_create_data_analysis_result():
+    """创建数据分析结果"""
+    try:
+        data = request.get_json()
+        
+        result = DataAnalysisResult(
+            project_id=data.get('project_id'),
+            name=data.get('name'),
+            data_points=data.get('data_points', ''),
+            chart_data=data.get('chart_data', ''),
+            statistics=data.get('statistics', ''),
+            analysis_result=data.get('analysis_result', '')
+        )
+        
+        db.session.add(result)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '分析结果保存成功',
+            'data': result.to_dict()
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+
+@app.route('/api/data-analysis-results/project/<int:project_id>', methods=['GET'])
+def api_get_data_analysis_results(project_id):
+    """获取项目的所有分析结果"""
+    try:
+        results = DataAnalysisResult.query.filter_by(project_id=project_id).order_by(DataAnalysisResult.created_at.desc()).all()
+        return jsonify({
+            'success': True,
+            'data': [result.to_dict() for result in results]
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+
+@app.route('/api/data-analysis-results/<int:id>', methods=['GET'])
+def api_get_data_analysis_result(id):
+    """获取单个分析结果"""
+    try:
+        result = DataAnalysisResult.query.get(id)
+        if not result:
+            return jsonify({
+                'success': False,
+                'message': '分析结果不存在'
+            }), 404
+            
+        return jsonify({
+            'success': True,
+            'data': result.to_dict()
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+
+@app.route('/api/data-analysis-results/<int:id>', methods=['DELETE'])
+def api_delete_data_analysis_result(id):
+    """删除分析结果"""
+    try:
+        result = DataAnalysisResult.query.get(id)
+        if not result:
+            return jsonify({
+                'success': False,
+                'message': '分析结果不存在'
+            }), 404
+            
+        db.session.delete(result)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '分析结果删除成功'
         })
     except Exception as e:
         db.session.rollback()

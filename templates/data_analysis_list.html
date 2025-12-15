@@ -209,7 +209,6 @@
                     <tr>
                         <th>项目名称</th>
                         <th>描述</th>
-                        <th>分析类型</th>
                         <th>创建时间</th>
                         <th>操作</th>
                     </tr>
@@ -241,17 +240,6 @@
                 </div>
                 
                 <div class="form-group">
-                    <label for="analysis-type">分析类型 *</label>
-                    <select id="analysis-type" required>
-                        <option value="">请选择分析类型</option>
-                        <option value="descriptive">描述性分析</option>
-                        <option value="diagnostic">诊断性分析</option>
-                        <option value="predictive">预测性分析</option>
-                        <option value="prescriptive">决策性分析</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
                     <button type="submit" class="btn">保存项目</button>
                 </div>
             </form>
@@ -280,30 +268,10 @@
                         tbody.innerHTML = '';
                         
                         data.data.forEach(project => {
-                            // 将分析类型代码转换为中文显示
-                            let analysisTypeText = '';
-                            switch(project.analysis_type) {
-                                case 'descriptive':
-                                    analysisTypeText = '描述性分析';
-                                    break;
-                                case 'diagnostic':
-                                    analysisTypeText = '诊断性分析';
-                                    break;
-                                case 'predictive':
-                                    analysisTypeText = '预测性分析';
-                                    break;
-                                case 'prescriptive':
-                                    analysisTypeText = '决策性分析';
-                                    break;
-                                default:
-                                    analysisTypeText = project.analysis_type || '';
-                            }
-                            
                             const row = document.createElement('tr');
                             row.innerHTML = `
                                 <td>${project.name}</td>
                                 <td>${project.description || ''}</td>
-                                <td>${analysisTypeText}</td>
                                 <td>${new Date(project.created_at).toLocaleString()}</td>
                                 <td class="action-buttons">
                                     <a href="/data-analysis/project/${project.id}" class="action-btn view-btn">查看</a>
@@ -344,7 +312,6 @@
                         document.getElementById('project-id').value = project.id;
                         document.getElementById('project-name').value = project.name;
                         document.getElementById('project-description').value = project.description || '';
-                        document.getElementById('analysis-type').value = project.analysis_type || '';
                         
                         document.getElementById('project-modal').style.display = 'block';
                     } else {
@@ -369,17 +336,9 @@
             const projectId = document.getElementById('project-id').value;
             const name = document.getElementById('project-name').value;
             const description = document.getElementById('project-description').value;
-            const analysisType = document.getElementById('analysis-type').value;
-            
-            if (!name || !analysisType) {
-                alert('请填写所有必填字段');
-                return;
-            }
-            
             const data = {
                 name: name,
-                description: description,
-                analysis_type: analysisType
+                description: description
             };
             
             let url = '/api/data-analysis-projects';

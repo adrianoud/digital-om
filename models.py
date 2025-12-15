@@ -312,6 +312,9 @@ class DataAnalysisProject(db.Model):
     description = db.Column(db.Text)  # 项目描述
     # 为了向后兼容，设置默认值和可为空
     analysis_type = db.Column(db.String(50), nullable=True)  # 分析类型 (descriptive, diagnostic, predictive, prescriptive)
+    selected_points = db.Column(db.Text, nullable=True)  # 选中的数据点信息 (JSON格式)
+    analysis_instances = db.Column(db.Text, nullable=True)  # 分析实例信息 (JSON格式)
+    conclusion = db.Column(db.Text, nullable=True)  # 结论说明
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)  # 创建时间
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)  # 更新时间
     
@@ -324,6 +327,41 @@ class DataAnalysisProject(db.Model):
             'name': self.name,
             'description': self.description,
             'analysis_type': self.analysis_type if self.analysis_type is not None else '',
+            'selected_points': self.selected_points,
+            'analysis_instances': self.analysis_instances,
+            'conclusion': self.conclusion,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
+
+class DataAnalysisResult(db.Model):
+    """数据分析结果模型"""
+    __tablename__ = 'data_analysis_results'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    project_id = db.Column(db.Integer, db.ForeignKey('data_analysis_projects.id'), nullable=False)  # 项目ID
+    name = db.Column(db.String(200), nullable=False)  # 结果名称
+    data_points = db.Column(db.Text, nullable=False)  # 数据点信息 (JSON格式)
+    chart_data = db.Column(db.Text, nullable=True)  # 图表数据 (JSON格式)
+    statistics = db.Column(db.Text, nullable=True)  # 统计数据 (JSON格式)
+    analysis_result = db.Column(db.Text, nullable=True)  # 分析结果描述
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)  # 创建时间
+    
+    # 关系
+    project = db.relationship('DataAnalysisProject', backref='analysis_results')
+    
+    def __repr__(self):
+        return f'<DataAnalysisResult {self.name}>'
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'project_id': self.project_id,
+            'name': self.name,
+            'data_points': self.data_points,
+            'chart_data': self.chart_data,
+            'statistics': self.statistics,
+            'analysis_result': self.analysis_result,
+            'created_at': self.created_at.isoformat() if self.created_at else None
         }
