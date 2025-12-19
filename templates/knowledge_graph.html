@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>知识图谱管理 - 知识中心</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            padding: 30px 0;
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .management-container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .section-title {
+            color: #333;
+            font-size: 1.5rem;
+            margin: 20px 0;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(0, 0, 0, 0.1);
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+            margin-right: 10px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%);
+            color: #333;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+        
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .action-btn {
+            padding: 6px 12px;
+            margin: 0 5px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        
+        .edit-btn {
+            background-color: #007bff;
+            color: white;
+        }
+        
+        .delete-btn {
+            background-color: #dc3545;
+            color: white;
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 15px;
+            width: 80%;
+            max-width: 600px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+        
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            position: absolute;
+            right: 20px;
+            top: 10px;
+        }
+        
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        
+        .message {
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 8px;
+            text-align: center;
+            display: none;
+        }
+        
+        .message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .graph-container {
+            margin: 20px 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            min-height: 300px;
+        }
+        
+        .node-item {
+            margin: 10px 0;
+            padding: 15px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .edge-item {
+            margin: 10px 0;
+            padding: 15px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-bottom: none;
+            border-radius: 5px 5px 0 0;
+            margin-right: 5px;
+        }
+        
+        .tab.active {
+            background-color: white;
+            border-bottom: 1px solid white;
+            margin-bottom: -1px;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .graph-visualization {
+            width: 100%;
+            height: 400px;
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>知识图谱管理</h1>
+            <p>创建和管理知识图谱</p>
+        </div>
+        
+        <div class="management-container">
+            <div style="text-align: right; margin-bottom: 20px;">
+                <button class="btn" onclick="openCreateGraphModal()">新建知识图谱</button>
+                <button class="btn btn-secondary" onclick="loadGraphs()">刷新</button>
+            </div>
+            
+            <div id="message" class="message"></div>
+            
+            <h2 class="section-title">知识图谱列表</h2>
+            <table id="graphs-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>名称</th>
+                        <th>描述</th>
+                        <th>创建时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="graphs-list">
+                    <!-- 知识图谱列表将通过JavaScript动态填充 -->
+                </tbody>
+            </table>
+            
+            <div id="no-graphs-message" style="text-align: center; display: none;">
+                <p>暂无知识图谱，请创建一个新的知识图谱。</p>
+            </div>
+        </div>
+        
+        <a href="/knowledge-center" class="back-link">返回知识中心</a>
+    </div>
+    
+    <!-- 新建/编辑知识图谱模态框 -->
+    <div id="graph-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeGraphModal()">&times;</span>
+            <h2 id="graph-modal-title">新建知识图谱</h2>
+            <form id="graph-form">
+                <input type="hidden" id="graph-id">
+                <div class="form-group">
+                    <label for="graph-name">知识图谱名称 *</label>
+                    <input type="text" id="graph-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="graph-description">描述</label>
+                    <textarea id="graph-description" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn">保存</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeGraphModal()">取消</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- 知识图谱详情模态框 -->
+    <div id="graph-detail-modal" class="modal">
+        <div class="modal-content" style="width: 90%; max-width: 900px;">
+            <span class="close" onclick="closeGraphDetailModal()">&times;</span>
+            <h2 id="graph-detail-title">知识图谱详情</h2>
+            
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('visualization')">图谱可视化</div>
+                <div class="tab" onclick="switchTab('nodes')">节点管理</div>
+                <div class="tab" onclick="switchTab('edges')">关系管理</div>
+            </div>
+            
+            <div id="visualization-tab" class="tab-content active">
+                <div class="graph-visualization">
+                    知识图谱可视化区域（待实现）
+                </div>
+                <div style="text-align: center;">
+                    <button class="btn" onclick="openCreateNodeModal(currentGraphId)">添加节点</button>
+                </div>
+            </div>
+            
+            <div id="nodes-tab" class="tab-content">
+                <div style="text-align: right; margin-bottom: 20px;">
+                    <button class="btn" onclick="openCreateNodeModal(currentGraphId)">添加节点</button>
+                </div>
+                <div id="nodes-container">
+                    <!-- 节点列表将在这里显示 -->
+                </div>
+            </div>
+            
+            <div id="edges-tab" class="tab-content">
+                <div style="text-align: right; margin-bottom: 20px;">
+                    <button class="btn" onclick="openCreateEdgeModal(currentGraphId)">添加关系</button>
+                </div>
+                <div id="edges-container">
+                    <!-- 关系列表将在这里显示 -->
+                </div>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <button class="btn btn-secondary" onclick="closeGraphDetailModal()">关闭</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 新建/编辑节点模态框 -->
+    <div id="node-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeNodeModal()">&times;</span>
+            <h2 id="node-modal-title">新建节点</h2>
+            <form id="node-form">
+                <input type="hidden" id="node-id">
+                <input type="hidden" id="node-graph-id">
+                <div class="form-group">
+                    <label for="node-name">节点名称 *</label>
+                    <input type="text" id="node-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="node-type">节点类型 *</label>
+                    <input type="text" id="node-type" required placeholder="例如: 设备, 参数, 故障类型">
+                </div>
+                <div class="form-group">
+                    <label for="node-properties">节点属性 (JSON格式)</label>
+                    <textarea id="node-properties" rows="4" placeholder='{"属性名": "属性值", "属性名2": "属性值2"}'></textarea>
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn">保存</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeNodeModal()">取消</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- 新建/编辑关系模态框 -->
+    <div id="edge-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeEdgeModal()">&times;</span>
+            <h2 id="edge-modal-title">新建关系</h2>
+            <form id="edge-form">
+                <input type="hidden" id="edge-id">
+                <input type="hidden" id="edge-graph-id">
+                <div class="form-group">
+                    <label for="edge-from-node">起始节点 *</label>
+                    <select id="edge-from-node" required>
+                        <option value="">请选择起始节点</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="edge-to-node">目标节点 *</label>
+                    <select id="edge-to-node" required>
+                        <option value="">请选择目标节点</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="edge-relation-type">关系类型 *</label>
+                    <input type="text" id="edge-relation-type" required placeholder="例如: 包含, 导致, 影响">
+                </div>
+                <div class="form-group">
+                    <label for="edge-properties">关系属性 (JSON格式)</label>
+                    <textarea id="edge-properties" rows="4" placeholder='{"属性名": "属性值", "属性名2": "属性值2"}'></textarea>
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn">保存</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeEdgeModal()">取消</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        let currentGraphId = null;
+        
+        // 页面加载时获取知识图谱列表
+        document.addEventListener('DOMContentLoaded', function() {
+            loadGraphs();
+            
+            // 绑定表单提交事件
+            document.getElementById('graph-form').addEventListener('submit', handleGraphSubmit);
+            document.getElementById('node-form').addEventListener('submit', handleNodeSubmit);
+            document.getElementById('edge-form').addEventListener('submit', handleEdgeSubmit);
+        });
+        
+        // 获取知识图谱列表
+        function loadGraphs() {
+            fetch('/api/knowledge-graphs')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const tbody = document.getElementById('graphs-list');
+                        const noGraphsMessage = document.getElementById('no-graphs-message');
+                        
+                        if (data.data.length === 0) {
+                            tbody.innerHTML = '';
+                            noGraphsMessage.style.display = 'block';
+                        } else {
+                            noGraphsMessage.style.display = 'none';
+                            tbody.innerHTML = data.data.map(graph => `
+                                <tr>
+                                    <td>${graph.id}</td>
+                                    <td>${graph.name}</td>
+                                    <td>${graph.description || ''}</td>
+                                    <td>${new Date(graph.created_at).toLocaleString()}</td>
+                                    <td>
+                                        <button class="action-btn edit-btn" onclick="editGraph(${graph.id}, '${graph.name}', '${graph.description || ''}')">编辑</button>
+                                        <button class="action-btn" onclick="manageGraph(${graph.id})">管理</button>
+                                        <button class="action-btn delete-btn" onclick="deleteGraph(${graph.id})">删除</button>
+                                    </td>
+                                </tr>
+                            `).join('');
+                        }
+                    } else {
+                        showMessage(data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showMessage('获取知识图谱列表失败', 'error');
+                });
+        }
+        
+        // 显示消息
+        function showMessage(text, type) {
+            const messageEl = document.getElementById('message');
+            messageEl.textContent = text;
+            messageEl.className = `message ${type}`;
+            messageEl.style.display = 'block';
+            
+            setTimeout(() => {
+                messageEl.style.display = 'none';
+            }, 3000);
+        }
+        
+        // 打开新建知识图谱模态框
+        function openCreateGraphModal() {
+            document.getElementById('graph-modal-title').textContent = '新建知识图谱';
+            document.getElementById('graph-id').value = '';
+            document.getElementById('graph-name').value = '';
+            document.getElementById('graph-description').value = '';
+            document.getElementById('graph-modal').style.display = 'block';
+        }
+        
+        // 编辑知识图谱
+        function editGraph(id, name, description) {
+            document.getElementById('graph-modal-title').textContent = '编辑知识图谱';
+            document.getElementById('graph-id').value = id;
+            document.getElementById('graph-name').value = name;
+            document.getElementById('graph-description').value = description;
+            document.getElementById('graph-modal').style.display = 'block';
+        }
+        
+        // 关闭知识图谱模态框
+        function closeGraphModal() {
+            document.getElementById('graph-modal').style.display = 'none';
+        }
+        
+        // 处理知识图谱表单提交
+        function handleGraphSubmit(e) {
+            e.preventDefault();
+            
+            const id = document.getElementById('graph-id').value;
+            const name = document.getElementById('graph-name').value;
+            const description = document.getElementById('graph-description').value;
+            
+            const data = { name, description };
+            const method = id ? 'PUT' : 'POST';
+            const url = id ? `/api/knowledge-graphs/${id}` : '/api/knowledge-graphs';
+            
+            fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage(data.message, 'success');
+                    closeGraphModal();
+                    loadGraphs();
+                } else {
+                    showMessage(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMessage('操作失败', 'error');
+            });
+        }
+        
+        // 删除知识图谱
+        function deleteGraph(id) {
+            if (!confirm('确定要删除该知识图谱吗？此操作不可恢复。')) {
+                return;
+            }
+            
+            fetch(`/api/knowledge-graphs/${id}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage(data.message, 'success');
+                    loadGraphs();
+                } else {
+                    showMessage(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMessage('删除失败', 'error');
+            });
+        }
+        
+        // 管理知识图谱
+        function manageGraph(graphId) {
+            currentGraphId = graphId;
+            document.getElementById('graph-detail-title').textContent = '知识图谱详情';
+            document.getElementById('graph-detail-modal').style.display = 'block';
+            
+            // 加载节点和关系
+            loadGraphNodes(graphId);
+            loadGraphEdges(graphId);
+        }
+        
+        // 关闭知识图谱详情模态框
+        function closeGraphDetailModal() {
+            document.getElementById('graph-detail-modal').style.display = 'none';
+        }
+        
+        // 切换标签页
+        function switchTab(tabName) {
+            // 更新标签页激活状态
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelector(`.tab[onclick="switchTab('${tabName}')"]`).classList.add('active');
+            
+            // 显示对应的标签内容
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+        }
+        
+        // 加载知识图谱节点
+        function loadGraphNodes(graphId) {
+            fetch(`/api/knowledge-graphs/${graphId}/nodes`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        renderGraphNodes(data.data);
+                        // 更新关系表单中的节点选项
+                        updateEdgeNodeOptions(data.data);
+                    } else {
+                        showMessage(data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showMessage('获取节点失败', 'error');
+                });
+        }
+        
+        // 渲染知识图谱节点
+        function renderGraphNodes(nodes) {
+            const container = document.getElementById('nodes-container');
+            
+            if (nodes.length === 0) {
+                container.innerHTML = '<p>该知识图谱暂无节点。</p>';
+                return;
+            }
+            
+            container.innerHTML = nodes.map(node => `
+                <div class="node-item">
+                    <div>
+                        <strong>${node.name}</strong> 
+                        <span style="color: #666; font-size: 0.9em;">(${node.node_type})</span>
+                        <div style="font-size: 0.8em; color: #888; margin-top: 5px;">
+                            ${node.properties ? '包含属性' : '无属性'}
+                        </div>
+                    </div>
+                    <div>
+                        <button class="action-btn edit-btn" onclick="editNode(${node.id})">编辑</button>
+                        <button class="action-btn delete-btn" onclick="deleteNode(${node.id})">删除</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // 更新关系表单中的节点选项
+        function updateEdgeNodeOptions(nodes) {
+            const fromSelect = document.getElementById('edge-from-node');
+            const toSelect = document.getElementById('edge-to-node');
+            
+            // 保存当前选择
+            const fromValue = fromSelect.value;
+            const toValue = toSelect.value;
+            
+            // 清空选项
+            fromSelect.innerHTML = '<option value="">请选择起始节点</option>';
+            toSelect.innerHTML = '<option value="">请选择目标节点</option>';
+            
+            // 添加节点选项
+            nodes.forEach(node => {
+                fromSelect.innerHTML += `<option value="${node.id}">${node.name}</option>`;
+                toSelect.innerHTML += `<option value="${node.id}">${node.name}</option>`;
+            });
+            
+            // 恢复当前选择
+            fromSelect.value = fromValue;
+            toSelect.value = toValue;
+        }
+        
+        // 加载知识图谱关系
+        function loadGraphEdges(graphId) {
+            fetch(`/api/knowledge-graphs/${graphId}/edges`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        renderGraphEdges(data.data);
+                    } else {
+                        showMessage(data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showMessage('获取关系失败', 'error');
+                });
+        }
+        
+        // 渲染知识图谱关系
+        function renderGraphEdges(edges) {
+            const container = document.getElementById('edges-container');
+            
+            if (edges.length === 0) {
+                container.innerHTML = '<p>该知识图谱暂无关系。</p>';
+                return;
+            }
+            
+            // 这里需要获取节点信息来显示节点名称，暂时只显示ID
+            container.innerHTML = edges.map(edge => `
+                <div class="edge-item">
+                    <div>
+                        <strong>${edge.relation_type}</strong>
+                        <div style="font-size: 0.9em; color: #666; margin-top: 5px;">
+                            节点${edge.from_node_id} → 节点${edge.to_node_id}
+                        </div>
+                        <div style="font-size: 0.8em; color: #888; margin-top: 5px;">
+                            ${edge.properties ? '包含属性' : '无属性'}
+                        </div>
+                    </div>
+                    <div>
+                        <button class="action-btn edit-btn" onclick="editEdge(${edge.id})">编辑</button>
+                        <button class="action-btn delete-btn" onclick="deleteEdge(${edge.id})">删除</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // 打开创建节点模态框
+        function openCreateNodeModal(graphId) {
+            document.getElementById('node-modal-title').textContent = '新建节点';
+            document.getElementById('node-id').value = '';
+            document.getElementById('node-graph-id').value = graphId;
+            document.getElementById('node-name').value = '';
+            document.getElementById('node-type').value = '';
+            document.getElementById('node-properties').value = '';
+            document.getElementById('node-modal').style.display = 'block';
+        }
+        
+        // 编辑节点
+        function editNode(nodeId) {
+            // 这里应该获取节点详情并填充到表单中
+            // 为简化实现，我们直接打开创建节点模态框
+            alert('编辑节点功能待实现');
+        }
+        
+        // 删除节点
+        function deleteNode(nodeId) {
+            if (!confirm('确定要删除该节点吗？')) {
+                return;
+            }
+            
+            fetch(`/api/knowledge-graph-nodes/${nodeId}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage(data.message, 'success');
+                    loadGraphNodes(currentGraphId);
+                } else {
+                    showMessage(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMessage('删除节点失败', 'error');
+            });
+        }
+        
+        // 关闭节点模态框
+        function closeNodeModal() {
+            document.getElementById('node-modal').style.display = 'none';
+        }
+        
+        // 处理节点表单提交
+        function handleNodeSubmit(e) {
+            e.preventDefault();
+            
+            const id = document.getElementById('node-id').value;
+            const graph_id = document.getElementById('node-graph-id').value;
+            const name = document.getElementById('node-name').value;
+            const node_type = document.getElementById('node-type').value;
+            const properties = document.getElementById('node-properties').value;
+            
+            const data = { graph_id, name, node_type };
+            if (properties) data.properties = properties;
+            
+            const method = id ? 'PUT' : 'POST';
+            const url = id ? `/api/knowledge-graph-nodes/${id}` : '/api/knowledge-graph-nodes';
+            
+            fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage(data.message, 'success');
+                    closeNodeModal();
+                    loadGraphNodes(graph_id);
+                } else {
+                    showMessage(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMessage('操作失败', 'error');
+            });
+        }
+        
+        // 打开创建关系模态框
+        function openCreateEdgeModal(graphId) {
+            document.getElementById('edge-modal-title').textContent = '新建关系';
+            document.getElementById('edge-id').value = '';
+            document.getElementById('edge-graph-id').value = graphId;
+            document.getElementById('edge-from-node').value = '';
+            document.getElementById('edge-to-node').value = '';
+            document.getElementById('edge-relation-type').value = '';
+            document.getElementById('edge-properties').value = '';
+            document.getElementById('edge-modal').style.display = 'block';
+        }
+        
+        // 编辑关系
+        function editEdge(edgeId) {
+            // 这里应该获取关系详情并填充到表单中
+            // 为简化实现，我们直接打开创建关系模态框
+            alert('编辑关系功能待实现');
+        }
+        
+        // 删除关系
+        function deleteEdge(edgeId) {
+            if (!confirm('确定要删除该关系吗？')) {
+                return;
+            }
+            
+            fetch(`/api/knowledge-graph-edges/${edgeId}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage(data.message, 'success');
+                    loadGraphEdges(currentGraphId);
+                } else {
+                    showMessage(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMessage('删除关系失败', 'error');
+            });
+        }
+        
+        // 关闭关系模态框
+        function closeEdgeModal() {
+            document.getElementById('edge-modal').style.display = 'none';
+        }
+        
+        // 处理关系表单提交
+        function handleEdgeSubmit(e) {
+            e.preventDefault();
+            
+            const id = document.getElementById('edge-id').value;
+            const graph_id = document.getElementById('edge-graph-id').value;
+            const from_node_id = document.getElementById('edge-from-node').value;
+            const to_node_id = document.getElementById('edge-to-node').value;
+            const relation_type = document.getElementById('edge-relation-type').value;
+            const properties = document.getElementById('edge-properties').value;
+            
+            if (!from_node_id || !to_node_id) {
+                showMessage('请选择起始节点和目标节点', 'error');
+                return;
+            }
+            
+            if (from_node_id === to_node_id) {
+                showMessage('起始节点和目标节点不能相同', 'error');
+                return;
+            }
+            
+            const data = { graph_id, from_node_id, to_node_id, relation_type };
+            if (properties) data.properties = properties;
+            
+            const method = id ? 'PUT' : 'POST';
+            const url = id ? `/api/knowledge-graph-edges/${id}` : '/api/knowledge-graph-edges';
+            
+            fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage(data.message, 'success');
+                    closeEdgeModal();
+                    loadGraphEdges(graph_id);
+                } else {
+                    showMessage(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMessage('操作失败', 'error');
+            });
+        }
+    </script>
+</body>
+</html>

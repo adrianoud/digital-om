@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>决策树管理 - 知识中心</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            padding: 30px 0;
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .management-container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .section-title {
+            color: #333;
+            font-size: 1.5rem;
+            margin: 20px 0;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(0, 0, 0, 0.1);
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+            margin-right: 10px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%);
+            color: #333;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+        
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .action-btn {
+            padding: 6px 12px;
+            margin: 0 5px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        
+        .edit-btn {
+            background-color: #007bff;
+            color: white;
+        }
+        
+        .delete-btn {
+            background-color: #dc3545;
+            color: white;
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 15px;
+            width: 80%;
+            max-width: 600px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+        
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            position: absolute;
+            right: 20px;
+            top: 10px;
+        }
+        
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        
+        .message {
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 8px;
+            text-align: center;
+            display: none;
+        }
+        
+        .message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .node-tree {
+            margin: 20px 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 10px;
+        }
+        
+        .node {
+            margin: 10px 0;
+            padding: 15px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        
+        .node.root {
+            border-left: 5px solid #28a745;
+        }
+        
+        .node.decision {
+            border-left: 5px solid #007bff;
+        }
+        
+        .node.leaf {
+            border-left: 5px solid #ffc107;
+        }
+        
+        .node-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .node-type {
+            font-size: 0.8em;
+            padding: 3px 8px;
+            border-radius: 10px;
+            color: white;
+        }
+        
+        .node-type.root {
+            background-color: #28a745;
+        }
+        
+        .node-type.decision {
+            background-color: #007bff;
+        }
+        
+        .node-type.leaf {
+            background-color: #ffc107;
+        }
+        
+        .node-actions {
+            margin-top: 10px;
+        }
+        
+        .node-condition, .node-result {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+            font-size: 0.9em;
+        }
+        
+        /* 决策节点分支容器 */
+        .decision-branches {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e9ecef;
+            border-radius: 8px;
+            flex-wrap: wrap; /* 允许换行以适应小屏幕 */
+        }
+        
+        .branch-container {
+            flex: 1;
+            margin: 0 10px;
+            padding: 10px;
+            background-color: white;
+            border-radius: 5px;
+            min-height: 100px;
+            min-width: 200px; /* 确保最小宽度 */
+        }
+        
+        .branch-label {
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #007bff;
+        }
+        
+        .branch-content {
+            min-height: 80px;
+        }
+        
+        .branch-placeholder {
+            text-align: center;
+            color: #6c757d;
+            font-style: italic;
+            padding: 20px;
+        }
+        
+        .branch-node {
+            margin: 5px 0;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            border-left: 3px solid #007bff;
+        }
+        
+        /* 嵌套决策节点样式 */
+        .nested-decision-node {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #e3f2fd;
+            border-radius: 5px;
+            border-left: 3px solid #2196f3;
+        }
+        
+        /* 小屏幕适配 */
+        @media (max-width: 768px) {
+            .decision-branches {
+                flex-direction: column;
+            }
+            
+            .branch-container {
+                min-width: unset;
+                margin: 10px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>决策树管理</h1>
+            <p>创建和管理决策树模型</p>
+        </div>
+        
+        <div class="management-container">
+            <div style="text-align: right; margin-bottom: 20px;">
+                <button class="btn" onclick="openCreateTreeModal()">新建决策树</button>
+                <button class="btn btn-secondary" onclick="loadTrees()">刷新</button>
+            </div>
+            
+            <div id="message" class="message"></div>
+            
+            <h2 class="section-title">决策树列表</h2>
+            <table id="trees-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>名称</th>
+                        <th>描述</th>
+                        <th>创建时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="trees-list">
+                    <!-- 决策树列表将通过JavaScript动态填充 -->
+                </tbody>
+            </table>
+            
+            <div id="no-trees-message" style="text-align: center; display: none;">
+                <p>暂无决策树，请创建一个新的决策树。</p>
+            </div>
+        </div>
+        
+        <a href="/knowledge-center" class="back-link">返回知识中心</a>
+    </div>
+    
+    <!-- 新建/编辑决策树模态框 -->
+    <div id="tree-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeTreeModal()">&times;</span>
+            <h2 id="tree-modal-title">新建决策树</h2>
+            <form id="tree-form">
+                <input type="hidden" id="tree-id">
+                <div class="form-group">
+                    <label for="tree-name">决策树名称 *</label>
+                    <input type="text" id="tree-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="tree-description">描述</label>
+                    <textarea id="tree-description" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn">保存</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeTreeModal()">取消</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- 决策树节点管理模态框 -->
+    <div id="node-modal" class="modal">
+        <div class="modal-content" style="width: 90%; max-width: 900px;">
+            <span class="close" onclick="closeNodeModal()">&times;</span>
+            <h2 id="node-modal-title">管理节点</h2>
+            <div id="node-tree-container">
+                <!-- 节点树将在这里显示 -->
+            </div>
+            <div style="margin-top: 20px; text-align: center;">
+                <button class="btn" onclick="openCreateNodeModal(currentTreeId)">添加根节点</button>
+                <button class="btn btn-secondary" onclick="closeNodeModal()">关闭</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 新建/编辑节点模态框 -->
+    <div id="create-node-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeCreateNodeModal()">&times;</span>
+            <h2 id="create-node-modal-title">新建节点</h2>
+            <form id="node-form">
+                <input type="hidden" id="node-id">
+                <input type="hidden" id="node-tree-id">
+                <input type="hidden" id="node-parent-id">
+                <input type="hidden" id="node-branch-type"> <!-- 用于标记是/否分支 -->
+                <div class="form-group">
+                    <label for="node-name">节点名称 *</label>
+                    <input type="text" id="node-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="node-type">节点类型 *</label>
+                    <select id="node-type" required onchange="toggleNodeTypeFields()">
+                        <option value="">请选择节点类型</option>
+                        <option value="root">根节点</option>
+                        <option value="decision">决策节点</option>
+                        <option value="leaf">叶子节点</option>
+                    </select>
+                </div>
+                <div class="form-group" id="condition-field" style="display: none;">
+                    <label for="node-condition">判定条件</label>
+                    <textarea id="node-condition" rows="3" placeholder="例如: temperature > 30"></textarea>
+                </div>
+                <div class="form-group" id="result-field" style="display: none;">
+                    <label for="node-result">节点结果</label>
+                    <textarea id="node-result" rows="3" placeholder="节点的最终结果"></textarea>
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn">保存</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeCreateNodeModal()">取消</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        let currentTreeId = null;
+        let currentNodeData = {}; // 存储当前节点数据用于编辑
+        
+        // 页面加载时获取决策树列表
+        document.addEventListener('DOMContentLoaded', function() {
+            loadTrees();
+            
+            // 绑定表单提交事件
+            document.getElementById('tree-form').addEventListener('submit', handleTreeSubmit);
+            document.getElementById('node-form').addEventListener('submit', handleNodeSubmit);
+        });
+        
+        // 获取决策树列表
+        function loadTrees() {
+            fetch('/api/decision-trees')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const tbody = document.getElementById('trees-list');
+                        const noTreesMessage = document.getElementById('no-trees-message');
+                        
+                        if (data.data.length === 0) {
+                            tbody.innerHTML = '';
+                            noTreesMessage.style.display = 'block';
+                        } else {
+                            noTreesMessage.style.display = 'none';
+                            tbody.innerHTML = data.data.map(tree => `
+                                <tr>
+                                    <td>${tree.id}</td>
+                                    <td>${tree.name}</td>
+                                    <td>${tree.description || ''}</td>
+                                    <td>${new Date(tree.created_at).toLocaleString()}</td>
+                                    <td>
+                                        <button class="action-btn edit-btn" onclick="editTree(${tree.id}, '${tree.name}', '${tree.description || ''}')">编辑</button>
+                                        <button class="action-btn" onclick="manageNodes(${tree.id})">管理节点</button>
+                                        <button class="action-btn delete-btn" onclick="deleteTree(${tree.id})">删除</button>
+                                    </td>
+                                </tr>
+                            `).join('');
+                        }
+                    } else {
+                        showMessage(data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showMessage('获取决策树列表失败', 'error');
+                });
+        }
+        
+        // 显示消息
+        function showMessage(text, type) {
+            const messageEl = document.getElementById('message');
+            messageEl.textContent = text;
+            messageEl.className = `message ${type}`;
+            messageEl.style.display = 'block';
+            
+            setTimeout(() => {
+                messageEl.style.display = 'none';
+            }, 3000);
+        }
+        
+        // 打开新建决策树模态框
+        function openCreateTreeModal() {
+            document.getElementById('tree-modal-title').textContent = '新建决策树';
+            document.getElementById('tree-id').value = '';
+            document.getElementById('tree-name').value = '';
+            document.getElementById('tree-description').value = '';
+            document.getElementById('tree-modal').style.display = 'block';
+        }
+        
+        // 编辑决策树
+        function editTree(id, name, description) {
+            document.getElementById('tree-modal-title').textContent = '编辑决策树';
+            document.getElementById('tree-id').value = id;
+            document.getElementById('tree-name').value = name;
+            document.getElementById('tree-description').value = description;
+            document.getElementById('tree-modal').style.display = 'block';
+        }
+        
+        // 关闭决策树模态框
+        function closeTreeModal() {
+            document.getElementById('tree-modal').style.display = 'none';
+        }
+        
+        // 处理决策树表单提交
+        function handleTreeSubmit(e) {
+            e.preventDefault();
+            
+            const id = document.getElementById('tree-id').value;
+            const name = document.getElementById('tree-name').value;
+            const description = document.getElementById('tree-description').value;
+            
+            const data = { name, description };
+            const method = id ? 'PUT' : 'POST';
+            const url = id ? `/api/decision-trees/${id}` : '/api/decision-trees';
+            
+            fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage(data.message, 'success');
+                    closeTreeModal();
+                    loadTrees();
+                } else {
+                    showMessage(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMessage('操作失败', 'error');
+            });
+        }
+        
+        // 删除决策树
+        function deleteTree(id) {
+            if (!confirm('确定要删除该决策树吗？此操作不可恢复。')) {
+                return;
+            }
+            
+            fetch(`/api/decision-trees/${id}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage(data.message, 'success');
+                    loadTrees();
+                } else {
+                    showMessage(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMessage('删除失败', 'error');
+            });
+        }
+        
+        // 管理节点
+        function manageNodes(treeId) {
+            currentTreeId = treeId;
+            loadTreeNodes(treeId);
+            document.getElementById('node-modal').style.display = 'block';
+        }
+        
+        // 加载决策树节点
+        function loadTreeNodes(treeId) {
+            fetch(`/api/decision-trees/${treeId}/nodes`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        renderTreeNodes(data.data, treeId);
+                    } else {
+                        showMessage(data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showMessage('获取节点失败', 'error');
+                });
+        }
+        
+        // 渲染决策树节点
+        function renderTreeNodes(nodes, treeId) {
+            const container = document.getElementById('node-tree-container');
+            
+            if (nodes.length === 0) {
+                container.innerHTML = `
+                    <p>该决策树暂无节点，请添加根节点开始构建决策树。</p>
+                    <div style="text-align: center; margin-top: 20px;">
+                        <button class="btn" onclick="openCreateNodeModal(${treeId})">添加根节点</button>
+                    </div>
+                `;
+                return;
+            }
+            
+            // 构建节点树结构
+            const nodeMap = {};
+            nodes.forEach(node => {
+                nodeMap[node.id] = {...node, children: []};
+            });
+            
+            // 建立父子关系
+            nodes.forEach(node => {
+                if (node.parent_id && nodeMap[node.parent_id]) {
+                    nodeMap[node.parent_id].children.push(nodeMap[node.id]);
+                }
+            });
+            
+            // 找到根节点
+            const rootNode = nodes.find(node => node.node_type === 'root');
+            if (!rootNode) {
+                container.innerHTML = '<p>未找到根节点</p>';
+                return;
+            }
+            
+            // 渲染树
+            container.innerHTML = renderNodeTree(nodeMap[rootNode.id], nodes);
+        }
+        
+        // 渲染节点树
+        function renderNodeTree(node, allNodes) {
+            let html = `
+                <div class="node ${node.node_type}">
+                    <div class="node-header">
+                        <div>
+                            <strong>${node.name}</strong>
+                            <span class="node-type ${node.node_type}">${getNodeTypeName(node.node_type)}</span>
+                        </div>
+                        <div>
+                            <button class="action-btn edit-btn" onclick="editNode(${JSON.stringify(node)})">编辑</button>
+                            <button class="action-btn delete-btn" onclick="deleteNode(${node.id})">删除</button>
+                        </div>
+                    </div>
+            `;
+            
+            if (node.condition) {
+                html += `<div class="node-condition"><strong>判定条件:</strong> ${node.condition}</div>`;
+            }
+            
+            if (node.result) {
+                html += `<div class="node-result"><strong>节点结果:</strong> ${node.result}</div>`;
+            }
+            
+            // 特殊处理决策节点，显示左右分支
+            if (node.node_type === 'decision') {
+                // 查找是分支和否分支的子节点
+                const yesChild = allNodes.find(n => n.id === node.yes_child_id);
+                const noChild = allNodes.find(n => n.id === node.no_child_id);
+                
+                html += `
+                    <div class="decision-branches">
+                        <div class="branch-container">
+                            <div class="branch-label">是分支</div>
+                            <div class="branch-content">
+                                ${yesChild ? renderBranchNode(yesChild, allNodes) : `
+                                    <div class="branch-placeholder">
+                                        暂无节点<br>
+                                        <button class="btn" style="margin-top: 10px; padding: 5px 10px;" 
+                                            onclick="openCreateNodeModal(${node.tree_id}, ${node.id}, 'decision', 'yes')">添加节点</button>
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                    <div class="branch-container">
+                        <div class="branch-label">否分支</div>
+                        <div class="branch-content">
+                            ${noChild ? renderBranchNode(noChild, allNodes) : `
+                                <div class="branch-placeholder">
+                                    暂无节点<br>
+                                    <button class="btn" style="margin-top: 10px; padding: 5px 10px;" 
+                                        onclick="openCreateNodeModal(${node.tree_id}, ${node.id}, 'decision', 'no')">添加节点</button>
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                `;
+            } else if (node.node_type !== 'leaf') {
+                // 非叶子节点的标准子节点显示
+                html += `<div style="margin-top: 10px;">`;
+                html += `<button class="btn" onclick="openCreateNodeModal(${node.tree_id}, ${node.id})">添加子节点</button>`;
+                html += `</div>`;
+                
+                if (node.children && node.children.length > 0) {
+                    node.children.forEach(child => {
+                        html += renderNodeTree(child, allNodes);
+                    });
+                }
+            }
+            
+            html += `</div>`;
+            return html;
+        }
+        
+        // 渲染分支节点
+        function renderBranchNode(node, allNodes) {
+            let html = `
+                <div class="branch-node">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <strong>${node.name}</strong>
+                            <span class="node-type ${node.node_type}" style="font-size: 0.7em;">${getNodeTypeName(node.node_type)}</span>
+                        </div>
+                        <div>
+                            <button class="action-btn edit-btn" style="padding: 3px 8px; font-size: 12px;" 
+                                onclick="editNode(${JSON.stringify(node)})">编辑</button>
+                            <button class="action-btn delete-btn" style="padding: 3px 8px; font-size: 12px;" 
+                                onclick="deleteNode(${node.id})">删除</button>
+                        </div>
+                    </div>
+                    ${node.condition ? `<div style="font-size: 0.8em; margin-top: 5px;"><strong>条件:</strong> ${node.condition}</div>` : ''}
+                    ${node.result ? `<div style="font-size: 0.8em; margin-top: 5px;"><strong>结果:</strong> ${node.result}</div>` : ''}
+            `;
+            
+            // 如果分支节点是决策节点，则继续渲染其分支
+            if (node.node_type === 'decision') {
+                const yesChild = allNodes.find(n => n.id === node.yes_child_id);
+                const noChild = allNodes.find(n => n.id === node.no_child_id);
+                
+                html += `
+                    <div class="decision-branches" style="margin-top: 10px; padding: 10px; background-color: #f1f8e9;">
+                        <div class="branch-container">
+                            <div class="branch-label">是分支</div>
+                            <div class="branch-content">
+                                ${yesChild ? renderBranchNode(yesChild, allNodes) : `
+                                    <div class="branch-placeholder">
+                                        暂无节点<br>
+                                        <button class="btn" style="margin-top: 10px; padding: 3px 8px; font-size: 12px;" 
+                                            onclick="openCreateNodeModal(${node.tree_id}, ${node.id}, 'decision', 'yes')">添加节点</button>
+                                    </div>
+                                `}
+                            </div>
+                        </div>
+                        <div class="branch-container">
+                            <div class="branch-label">否分支</div>
+                            <div class="branch-content">
+                                ${noChild ? renderBranchNode(noChild, allNodes) : `
+                                    <div class="branch-placeholder">
+                                        暂无节点<br>
+                                        <button class="btn" style="margin-top: 10px; padding: 3px 8px; font-size: 12px;" 
+                                            onclick="openCreateNodeModal(${node.tree_id}, ${node.id}, 'decision', 'no')">添加节点</button>
+                                    </div>
+                                `}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            html += `</div>`;
+            return html;
+        }
+        
+        // 获取节点类型名称
+        function getNodeTypeName(type) {
+            switch(type) {
+                case 'root': return '根节点';
+                case 'decision': return '决策节点';
+                case 'leaf': return '叶子节点';
+                default: return type;
+            }
+        }
+        
+        // 关闭节点管理模态框
+        function closeNodeModal() {
+            document.getElementById('node-modal').style.display = 'none';
+        }
+        
+        // 打开创建节点模态框
+        function openCreateNodeModal(treeId, parentId = null, parentType = null, branchType = null) {
+            document.getElementById('create-node-modal-title').textContent = parentId ? '新建子节点' : '新建根节点';
+            document.getElementById('node-id').value = '';
+            document.getElementById('node-tree-id').value = treeId;
+            document.getElementById('node-parent-id').value = parentId || '';
+            document.getElementById('node-branch-type').value = branchType || ''; // 记录分支类型
+            document.getElementById('node-name').value = '';
+            document.getElementById('node-type').value = '';
+            document.getElementById('node-condition').value = '';
+            document.getElementById('node-result').value = '';
+            
+            // 根据父节点类型设置节点类型选项
+            const typeSelect = document.getElementById('node-type');
+            typeSelect.innerHTML = '<option value="">请选择节点类型</option>';
+            
+            if (parentId === null) {
+                // 根节点
+                typeSelect.innerHTML += '<option value="root">根节点</option>';
+                document.getElementById('condition-field').style.display = 'none';
+                document.getElementById('result-field').style.display = 'none';
+            } else if (parentType === 'decision') {
+                // 决策节点的分支只能是决策节点或叶子节点
+                typeSelect.innerHTML += '<option value="decision">决策节点</option>';
+                typeSelect.innerHTML += '<option value="leaf">叶子节点</option>';
+            } else {
+                // 其他情况可以添加决策节点或叶子节点
+                typeSelect.innerHTML += '<option value="decision">决策节点</option>';
+                typeSelect.innerHTML += '<option value="leaf">叶子节点</option>';
+            }
+            
+            document.getElementById('create-node-modal').style.display = 'block';
+        }
+        
+        // 编辑节点
+        function editNode(nodeData) {
+            currentNodeData = nodeData; // 保存节点数据用于更新
+            
+            document.getElementById('create-node-modal-title').textContent = '编辑节点';
+            document.getElementById('node-id').value = nodeData.id;
+            document.getElementById('node-tree-id').value = nodeData.tree_id;
+            document.getElementById('node-parent-id').value = nodeData.parent_id || '';
+            document.getElementById('node-name').value = nodeData.name;
+            document.getElementById('node-type').value = nodeData.node_type;
+            
+            // 设置条件和结果字段
+            document.getElementById('node-condition').value = nodeData.condition || '';
+            document.getElementById('node-result').value = nodeData.result || '';
+            
+            // 根据节点类型显示相应字段
+            toggleNodeTypeFields();
+            
+            document.getElementById('create-node-modal').style.display = 'block';
+        }
+        
+        // 删除节点
+        function deleteNode(nodeId) {
+            if (!confirm('确定要删除该节点吗？此操作将同时删除所有子节点。')) {
+                return;
+            }
+            
+            fetch(`/api/decision-tree-nodes/${nodeId}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage(data.message, 'success');
+                    loadTreeNodes(currentTreeId);
+                } else {
+                    showMessage(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMessage('删除节点失败', 'error');
+            });
+        }
+        
+        // 关闭创建节点模态框
+        function closeCreateNodeModal() {
+            document.getElementById('create-node-modal').style.display = 'none';
+        }
+        
+        // 切换节点类型字段显示
+        function toggleNodeTypeFields() {
+            const type = document.getElementById('node-type').value;
+            const conditionField = document.getElementById('condition-field');
+            const resultField = document.getElementById('result-field');
+            
+            conditionField.style.display = (type === 'decision') ? 'block' : 'none';
+            resultField.style.display = (type === 'leaf') ? 'block' : 'none';
+        }
+        
+        // 处理节点表单提交
+        function handleNodeSubmit(e) {
+            e.preventDefault();
+            
+            const id = document.getElementById('node-id').value;
+            const tree_id = document.getElementById('node-tree-id').value;
+            const parent_id = document.getElementById('node-parent-id').value;
+            const branch_type = document.getElementById('node-branch-type').value; // 分支类型（yes/no）
+            const name = document.getElementById('node-name').value;
+            const node_type = document.getElementById('node-type').value;
+            const condition = document.getElementById('node-condition').value;
+            const result = document.getElementById('node-result').value;
+            
+            const data = { tree_id, name, node_type };
+            
+            if (parent_id) data.parent_id = parent_id;
+            if (condition) data.condition = condition;
+            if (result) data.result = result;
+            
+            const method = id ? 'PUT' : 'POST';
+            let url = id ? `/api/decision-tree-nodes/${id}` : '/api/decision-tree-nodes';
+            
+            fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 如果是决策节点的分支，需要更新父节点的yes_child_id或no_child_id
+                    if (parent_id && branch_type && data.data) {
+                        updateParentBranch(parent_id, data.data.id, branch_type)
+                            .then(() => {
+                                showMessage('节点创建成功', 'success');
+                                closeCreateNodeModal();
+                                loadTreeNodes(tree_id);
+                            })
+                            .catch(() => {
+                                showMessage('节点创建成功，但分支关联失败', 'error');
+                                closeCreateNodeModal();
+                                loadTreeNodes(tree_id);
+                            });
+                    } else {
+                        showMessage(data.message, 'success');
+                        closeCreateNodeModal();
+                        loadTreeNodes(tree_id);
+                    }
+                } else {
+                    showMessage(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMessage('操作失败', 'error');
+            });
+        }
+        
+        // 更新父节点的分支关联
+        function updateParentBranch(parentId, childId, branchType) {
+            return new Promise((resolve, reject) => {
+                // 获取父节点当前数据
+                fetch(`/api/decision-tree-nodes/${parentId}`)
+                    .then(response => response.json())
+                    .then(parentData => {
+                        if (parentData.success) {
+                            const updateData = {...parentData.data};
+                            
+                            // 根据分支类型更新相应的字段
+                            if (branchType === 'yes') {
+                                updateData.yes_child_id = childId;
+                            } else if (branchType === 'no') {
+                                updateData.no_child_id = childId;
+                            }
+                            
+                            // 更新父节点
+                            return fetch(`/api/decision-tree-nodes/${parentId}`, {
+                                method: 'PUT',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify(updateData)
+                            });
+                        } else {
+                            reject(new Error('无法获取父节点数据'));
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(result => {
+                        if (result.success) {
+                            resolve();
+                        } else {
+                            reject(new Error(result.message));
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error updating parent branch:', error);
+                        reject(error);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>
