@@ -833,6 +833,23 @@ def api_delete_decision_tree(id):
                 'message': '决策树不存在'
             }), 404
             
+        # 先删除所有相关的节点，需要特殊处理循环依赖
+        nodes = DecisionTreeNode.query.filter_by(tree_id=id).all()
+        
+        # 先清除所有节点的外键引用
+        for node in nodes:
+            node.parent_id = None
+            node.yes_child_id = None
+            node.no_child_id = None
+        
+        # 提交外键更新
+        db.session.flush()
+        
+        # 再删除所有节点
+        for node in nodes:
+            db.session.delete(node)
+            
+        # 最后删除决策树本身
         db.session.delete(tree)
         db.session.commit()
         
@@ -912,6 +929,7 @@ def api_create_decision_tree_node():
                     'message': '该决策树已存在根节点'
                 }), 400
         
+        # 创建节点
         node = DecisionTreeNode(
             tree_id=tree_id,
             name=name,
@@ -924,6 +942,20 @@ def api_create_decision_tree_node():
         )
         
         db.session.add(node)
+        db.session.flush()  # 获取新节点的ID
+        
+        # 如果是分支节点，更新父节点的引用
+        branch_type = data.get('branch_type')
+        parent_id = data.get('parent_id')
+        if parent_id and branch_type:
+            parent_node = DecisionTreeNode.query.get(parent_id)
+            if parent_node:
+                if branch_type == 'yes':
+                    parent_node.yes_child_id = node.id
+                elif branch_type == 'no':
+                    parent_node.no_child_id = node.id
+                db.session.add(parent_node)
+        
         db.session.commit()
         
         return jsonify({

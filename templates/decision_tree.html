@@ -211,19 +211,44 @@
             border: 1px solid #f5c6cb;
         }
         
-        .node-tree {
+        /* 决策树可视化样式 */
+        .decision-tree-container {
             margin: 20px 0;
             padding: 20px;
             background-color: #f8f9fa;
             border-radius: 10px;
+            overflow-x: auto;
+            position: relative;
         }
         
-        .node {
-            margin: 10px 0;
+        .tree-layout {
+            display: flex;
+            flex-direction: row;
+            align-items: flex-start;
+            min-width: max-content;
+        }
+        
+        .tree-node-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0 20px;
+        }
+        
+        .tree-node-wrapper.level-0 {
+            margin-left: 0;
+        }
+        
+        .tree-node {
             padding: 15px;
             background-color: white;
             border-radius: 8px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            position: relative;
+            min-width: 180px;
+            text-align: center;
+            border: 2px solid transparent;
+            z-index: 2;
             position: relative;
         }
         
@@ -274,27 +299,85 @@
             background-color: #e9ecef;
             border-radius: 5px;
             font-size: 0.9em;
+            text-align: left;
+        }
+        
+        /* 连线样式 */
+        .connection-line {
+            position: absolute;
+            background-color: #6c757d;
+            z-index: 1;
+        }
+        
+        .horizontal-line {
+            height: 2px;
+            width: 100px;
+        }
+        
+        .vertical-line {
+            width: 2px;
+            height: 50px;
+        }
+        
+        /* 连接点样式 */
+        .connection-point {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #6c757d;
+            z-index: 2;
+        }
+        
+        .connection-point-left {
+            left: -4px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        
+        .connection-point-right {
+            right: -4px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        
+        .connection-point-top {
+            top: -4px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .connection-point-bottom {
+            bottom: -4px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        /* 是/否标签样式 */
+        .branch-label-line {
+            position: absolute;
+            font-size: 12px;
+            color: #007bff;
+            font-weight: bold;
+            z-index: 3;
+            white-space: nowrap;
         }
         
         /* 决策节点分支容器 */
         .decision-branches {
             display: flex;
             justify-content: space-around;
-            margin-top: 20px;
-            padding: 15px;
-            background-color: #e9ecef;
-            border-radius: 8px;
-            flex-wrap: wrap; /* 允许换行以适应小屏幕 */
+            margin-top: 40px;
+            position: relative;
+            width: 100%;
         }
         
         .branch-container {
             flex: 1;
             margin: 0 10px;
             padding: 10px;
-            background-color: white;
-            border-radius: 5px;
             min-height: 100px;
-            min-width: 200px; /* 确保最小宽度 */
+            position: relative;
         }
         
         .branch-label {
@@ -306,30 +389,46 @@
         
         .branch-content {
             min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
         
-        .branch-placeholder {
+        .empty-branch, .empty-child {
             text-align: center;
-            color: #6c757d;
-            font-style: italic;
-            padding: 20px;
+            padding: 10px;
         }
         
-        .branch-node {
-            margin: 5px 0;
-            padding: 10px;
-            background-color: #f8f9fa;
-            border-radius: 5px;
-            border-left: 3px solid #007bff;
+        .child-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 30px;
         }
         
-        /* 嵌套决策节点样式 */
-        .nested-decision-node {
-            margin: 10px 0;
-            padding: 10px;
-            background-color: #e3f2fd;
-            border-radius: 5px;
-            border-left: 3px solid #2196f3;
+        .child-connector {
+            width: 2px;
+            height: 30px;
+            background-color: #6c757d;
+        }
+        
+        /* 折叠按钮 */
+        .collapse-btn {
+            background: none;
+            border: none;
+            color: #007bff;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 5px;
+        }
+        
+        /* 展开/折叠图标 */
+        .expand-icon::before {
+            content: "[-]";
+        }
+        
+        .collapse-icon::before {
+            content: "[+]";
         }
         
         /* 小屏幕适配 */
@@ -409,14 +508,14 @@
     
     <!-- 决策树节点管理模态框 -->
     <div id="node-modal" class="modal">
-        <div class="modal-content" style="width: 90%; max-width: 900px;">
+        <div class="modal-content" style="width: 95%; max-width: 1200px;">
             <span class="close" onclick="closeNodeModal()">&times;</span>
             <h2 id="node-modal-title">管理节点</h2>
             <div id="node-tree-container">
                 <!-- 节点树将在这里显示 -->
             </div>
             <div style="margin-top: 20px; text-align: center;">
-                <button class="btn" onclick="openCreateNodeModal(currentTreeId)">添加根节点</button>
+                <button class="btn" onclick="openCreateNodeModal(currentTreeId, null, null)">添加根节点</button>
                 <button class="btn btn-secondary" onclick="closeNodeModal()">关闭</button>
             </div>
         </div>
@@ -464,6 +563,7 @@
     <script>
         let currentTreeId = null;
         let currentNodeData = {}; // 存储当前节点数据用于编辑
+        let nodeStates = {}; // 存储节点展开/折叠状态
         
         // 页面加载时获取决策树列表
         document.addEventListener('DOMContentLoaded', function() {
@@ -609,6 +709,7 @@
         // 管理节点
         function manageNodes(treeId) {
             currentTreeId = treeId;
+            nodeStates = {}; // 重置节点状态
             loadTreeNodes(treeId);
             document.getElementById('node-modal').style.display = 'block';
         }
@@ -630,21 +731,23 @@
                 });
         }
         
-        // 渲染决策树节点
+        // 渲染决策树节点 - 按照规范重新实现
         function renderTreeNodes(nodes, treeId) {
             const container = document.getElementById('node-tree-container');
             
             if (nodes.length === 0) {
                 container.innerHTML = `
-                    <p>该决策树暂无节点，请添加根节点开始构建决策树。</p>
-                    <div style="text-align: center; margin-top: 20px;">
-                        <button class="btn" onclick="openCreateNodeModal(${treeId})">添加根节点</button>
+                    <div class="empty-tree">
+                        <p>该决策树暂无节点，请添加根节点开始构建决策树。</p>
+                        <div style="text-align: center; margin-top: 20px;">
+                            <button class="btn" onclick="openCreateNodeModal(${treeId}, null, null)">添加根节点</button>
+                        </div>
                     </div>
                 `;
                 return;
             }
             
-            // 构建节点树结构
+            // 构建节点映射
             const nodeMap = {};
             nodes.forEach(node => {
                 nodeMap[node.id] = {...node, children: []};
@@ -664,22 +767,249 @@
                 return;
             }
             
-            // 渲染树
-            container.innerHTML = renderNodeTree(nodeMap[rootNode.id], nodes);
+            // 渲染整个决策树，使用连线布局
+            container.innerHTML = `
+                <div class="decision-tree-container" id="tree-container">
+                    ${renderDecisionTree(rootNode, nodes)}
+                </div>
+            `;
+            
+            // 绘制连接线
+            setTimeout(() => drawTreeConnections(rootNode, nodes), 100);
         }
         
-        // 渲染节点树
-        function renderNodeTree(node, allNodes) {
+        // 渲染决策树
+        function renderDecisionTree(rootNode, allNodes) {
+            // 使用递归方式渲染树
+            let html = '<div class="tree-layout">';
+            html += renderTreeNodeRecursive(rootNode, allNodes, 0);
+            html += '</div>';
+            return html;
+        }
+        
+        // 递归渲染节点
+        function renderTreeNodeRecursive(node, allNodes, level) {
             let html = `
-                <div class="node ${node.node_type}">
+                <div class="tree-node-wrapper level-${level}" id="wrapper-${node.id}">
+                    <div class="tree-node ${node.node_type}" id="tree-node-${node.id}" data-node-id="${node.id}">
+                        ${renderNodeHeader(node)}
+                        ${renderNodeDetails(node)}
+                    </div>
+            `;
+            
+            // 渲染子节点
+            if (node.node_type === 'decision') {
+                // 决策节点有是/否两个分支
+                const yesChild = allNodes.find(n => n.id === node.yes_child_id);
+                const noChild = allNodes.find(n => n.id === node.no_child_id);
+                
+                html += `
+                    <div class="decision-branches">
+                        <div class="branch-container yes-branch">
+                            <div class="branch-label">是</div>
+                            <div class="branch-content">
+                `;
+                
+                if (yesChild) {
+                    html += renderTreeNodeRecursive(yesChild, allNodes, level + 1);
+                } else {
+                    html += `
+                        <div class="empty-branch">
+                            <button class="btn" onclick="openCreateNodeModal(${node.tree_id}, ${node.id}, 'decision', 'yes')">添加是分支节点</button>
+                        </div>
+                    `;
+                }
+                
+                html += `
+                            </div>
+                        </div>
+                        <div class="branch-container no-branch">
+                            <div class="branch-label">否</div>
+                            <div class="branch-content">
+                `;
+                
+                if (noChild) {
+                    html += renderTreeNodeRecursive(noChild, allNodes, level + 1);
+                } else {
+                    html += `
+                        <div class="empty-branch">
+                            <button class="btn" onclick="openCreateNodeModal(${node.tree_id}, ${node.id}, 'decision', 'no')">添加否分支节点</button>
+                        </div>
+                    `;
+                }
+                
+                html += `
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (node.node_type === 'root') {
+                // 根节点只有一个子节点
+                const child = allNodes.find(n => n.parent_id === node.id);
+                
+                if (child) {
+                    html += `
+                        <div class="child-container">
+                            <div class="child-connector"></div>
+                            ${renderTreeNodeRecursive(child, allNodes, level + 1)}
+                        </div>
+                    `;
+                } else {
+                    html += `
+                        <div class="child-container">
+                            <div class="child-connector"></div>
+                            <div class="empty-child">
+                                <button class="btn" onclick="openCreateNodeModal(${node.tree_id}, ${node.id}, 'root')">添加子节点</button>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+            // 叶子节点没有子节点
+            
+            html += '</div>';
+            return html;
+        }
+        
+        // 渲染单个节点内容
+        function renderNodeContent(node) {
+            let html = `
+                <div class="tree-node ${node.node_type}" id="tree-node-${node.id}">
                     <div class="node-header">
                         <div>
                             <strong>${node.name}</strong>
                             <span class="node-type ${node.node_type}">${getNodeTypeName(node.node_type)}</span>
                         </div>
                         <div>
-                            <button class="action-btn edit-btn" onclick="editNode(${JSON.stringify(node)})">编辑</button>
+                            <button class="action-btn edit-btn" onclick="editNode(${JSON.stringify(node).replace(/"/g, '&quot;')})">编辑</button>
                             <button class="action-btn delete-btn" onclick="deleteNode(${node.id})">删除</button>
+                            ${(node.node_type === 'decision' || node.node_type === 'root') ? `<button class="action-btn" onclick="addChildNode(${node.tree_id}, ${node.id}, '${node.node_type}')" style="padding: 3px 8px; font-size: 12px;">添加子节点</button>` : ''}
+                            ${(node.node_type === 'decision') ? `<button class="collapse-btn ${nodeStates[node.id] !== false ? 'expand-icon' : 'collapse-icon'}" onclick="toggleNode(${node.id})"></button>` : ''}
+                        </div>
+                    </div>
+            `;
+            
+            if (node.condition) {
+                html += `<div class="node-condition"><strong>判定条件:</strong> ${node.condition}</div>`;
+            }
+            
+            if (node.result) {
+                html += `<div class="node-result"><strong>节点结果:</strong> ${node.result}</div>`;
+            }
+            
+            html += `</div>`;
+            return html;
+        }
+        
+        // 绘制连接线
+        function drawConnectionLines() {
+            // 移除之前的所有连线
+            const existingLines = document.querySelectorAll('.connection-line');
+            existingLines.forEach(line => line.remove());
+            
+            // 获取所有节点元素
+            const nodeElements = document.querySelectorAll('[id^="tree-node-"]');
+            
+            nodeElements.forEach(nodeElement => {
+                const nodeId = parseInt(nodeElement.id.replace('tree-node-', ''));
+                
+                // 查找节点数据
+                fetch(`/api/decision-tree-nodes/${nodeId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            const node = data.data;
+                            
+                            if (node.node_type === 'decision') {
+                                // 决策节点绘制到子节点的连线
+                                drawLineToChild(node, node.yes_child_id);
+                                drawLineToChild(node, node.no_child_id);
+                            } else if (node.node_type === 'root') {
+                                // 根节点绘制到子节点的连线
+                                const container = document.getElementById('node-tree-container');
+                                if (container) {
+                                    const childNodes = Array.from(container.querySelectorAll('[id^="tree-node-"]'))
+                                        .filter(el => {
+                                            const id = parseInt(el.id.replace('tree-node-', ''));
+                                            return data.allNodes && data.allNodes.some(n => n.parent_id === node.id && n.id === id);
+                                        });
+                                    
+                                    if (childNodes.length > 0) {
+                                        drawLineToChild(node, childNodes[0].id.replace('tree-node-', ''));
+                                    }
+                                }
+                            }
+                        }
+                    })
+                    .catch(error => console.error('Error fetching node data:', error));
+            });
+        }
+        
+        // 绘制到子节点的连线
+        function drawLineToChild(parentNode, childId, branchLabel, container) {
+            if (!childId) return;
+            
+            const parentElement = document.getElementById(`tree-node-${parentNode.id}`);
+            const childElement = document.getElementById(`tree-node-${childId}`);
+            
+            if (!parentElement || !childElement) return;
+            
+            const parentRect = parentElement.getBoundingClientRect();
+            const childRect = childElement.getBoundingClientRect();
+            
+            const containerRect = container.getBoundingClientRect();
+            
+            // 计算相对位置
+            const parentX = parentRect.left - containerRect.left + parentRect.width / 2;
+            const parentY = parentRect.top - containerRect.top + parentRect.height;
+            const childX = childRect.left - containerRect.left + childRect.width / 2;
+            const childY = childRect.top - containerRect.top;
+            
+            // 创建水平线
+            const horizontalLine = document.createElement('div');
+            horizontalLine.className = 'connection-line horizontal-line';
+            horizontalLine.style.width = Math.abs(childX - parentX) + 'px';
+            horizontalLine.style.left = Math.min(parentX, childX) + 'px';
+            horizontalLine.style.top = parentY + 'px';
+            
+            // 创建垂直线
+            const verticalLine = document.createElement('div');
+            verticalLine.className = 'connection-line vertical-line';
+            verticalLine.style.height = (childY - parentY) + 'px';
+            verticalLine.style.left = childX + 'px';
+            verticalLine.style.top = parentY + 'px';
+            
+            // 创建分支标签
+            if (branchLabel) {
+                const labelElement = document.createElement('div');
+                labelElement.className = 'branch-label-line';
+                labelElement.textContent = branchLabel;
+                labelElement.style.left = (Math.min(parentX, childX) + 5) + 'px';
+                labelElement.style.top = (parentY - 20) + 'px';
+                container.appendChild(labelElement);
+            }
+            
+            container.appendChild(horizontalLine);
+            container.appendChild(verticalLine);
+        }
+
+        // 渲染单个决策树节点
+        function renderDecisionTreeNode(node, allNodes) {
+            // 检查节点是否应该展开
+            const isExpanded = nodeStates[node.id] !== false; // 默认展开
+            
+            let html = `
+                <div class="tree-node ${node.node_type}">
+                    <div class="node-header">
+                        <div>
+                            <strong>${node.name}</strong>
+                            <span class="node-type ${node.node_type}">${getNodeTypeName(node.node_type)}</span>
+                        </div>
+                        <div>
+                            <button class="action-btn edit-btn" onclick="editNode(${JSON.stringify(node).replace(/"/g, '&quot;')})">编辑</button>
+                            <button class="action-btn delete-btn" onclick="deleteNode(${node.id})">删除</button>
+                            ${(node.node_type === 'decision' || node.node_type === 'root') ? `<button class="action-btn" onclick="addChildNode(${node.tree_id}, ${node.id}, '${node.node_type}')" style="padding: 3px 8px; font-size: 12px;">添加子节点</button>` : ''}
+                            ${(node.node_type === 'decision') ? `<button class="collapse-btn ${isExpanded ? 'expand-icon' : 'collapse-icon'}" onclick="toggleNode(${node.id})"></button>` : ''}
                         </div>
                     </div>
             `;
@@ -693,7 +1023,7 @@
             }
             
             // 特殊处理决策节点，显示左右分支
-            if (node.node_type === 'decision') {
+            if (node.node_type === 'decision' && isExpanded) {
                 // 查找是分支和否分支的子节点
                 const yesChild = allNodes.find(n => n.id === node.yes_child_id);
                 const noChild = allNodes.find(n => n.id === node.no_child_id);
@@ -708,33 +1038,43 @@
                                         暂无节点<br>
                                         <button class="btn" style="margin-top: 10px; padding: 5px 10px;" 
                                             onclick="openCreateNodeModal(${node.tree_id}, ${node.id}, 'decision', 'yes')">添加节点</button>
-                                </div>
-                            `}
+                                    </div>
+                                `}
+                            </div>
                         </div>
-                    </div>
-                    <div class="branch-container">
-                        <div class="branch-label">否分支</div>
-                        <div class="branch-content">
-                            ${noChild ? renderBranchNode(noChild, allNodes) : `
-                                <div class="branch-placeholder">
-                                    暂无节点<br>
-                                    <button class="btn" style="margin-top: 10px; padding: 5px 10px;" 
-                                        onclick="openCreateNodeModal(${node.tree_id}, ${node.id}, 'decision', 'no')">添加节点</button>
-                                </div>
-                            `}
+                        <div class="branch-container">
+                            <div class="branch-label">否分支</div>
+                            <div class="branch-content">
+                                ${noChild ? renderBranchNode(noChild, allNodes) : `
+                                    <div class="branch-placeholder">
+                                        暂无节点<br>
+                                        <button class="btn" style="margin-top: 10px; padding: 5px 10px;" 
+                                            onclick="openCreateNodeModal(${node.tree_id}, ${node.id}, 'decision', 'no')">添加节点</button>
+                                    </div>
+                                `}
+                            </div>
                         </div>
                     </div>
                 `;
-            } else if (node.node_type !== 'leaf') {
-                // 非叶子节点的标准子节点显示
-                html += `<div style="margin-top: 10px;">`;
-                html += `<button class="btn" onclick="openCreateNodeModal(${node.tree_id}, ${node.id})">添加子节点</button>`;
-                html += `</div>`;
-                
-                if (node.children && node.children.length > 0) {
-                    node.children.forEach(child => {
-                        html += renderNodeTree(child, allNodes);
+            } else if (node.node_type === 'decision' && !isExpanded) {
+                // 节点已折叠，显示展开按钮
+                html += `<div style="text-align: center; margin-top: 10px;"><small>节点已折叠</small></div>`;
+            } else if (node.node_type === 'root' && isExpanded) {
+                // 根节点显示子节点
+                const childNodes = allNodes.filter(n => n.parent_id === node.id);
+                if (childNodes.length > 0) {
+                    html += `<div style="margin-top: 15px;">`;
+                    childNodes.forEach(child => {
+                        html += renderBranchNode(child, allNodes);
                     });
+                    html += `</div>`;
+                } else {
+                    html += `
+                        <div style="margin-top: 10px; text-align: center;">
+                            <button class="btn" style="padding: 5px 10px; font-size: 12px;" 
+                                onclick="openCreateNodeModal(${node.tree_id}, ${node.id})">添加子节点</button>
+                        </div>
+                    `;
                 }
             }
             
@@ -742,8 +1082,11 @@
             return html;
         }
         
-        // 渲染分支节点
+        // 渲染分支节点（保留以确保兼容性）
         function renderBranchNode(node, allNodes) {
+            // 检查节点是否应该展开
+            const isExpanded = nodeStates[node.id] !== false; // 默认展开
+            
             let html = `
                 <div class="branch-node">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -753,17 +1096,19 @@
                         </div>
                         <div>
                             <button class="action-btn edit-btn" style="padding: 3px 8px; font-size: 12px;" 
-                                onclick="editNode(${JSON.stringify(node)})">编辑</button>
+                                onclick="editNode(${JSON.stringify(node).replace(/"/g, '&quot;')})">编辑</button>
                             <button class="action-btn delete-btn" style="padding: 3px 8px; font-size: 12px;" 
                                 onclick="deleteNode(${node.id})">删除</button>
+                            ${(node.node_type === 'decision' || node.node_type === 'root') ? `<button class="action-btn" onclick="addChildNode(${node.tree_id}, ${node.id}, '${node.node_type}')" style="padding: 3px 8px; font-size: 12px;">添加子节点</button>` : ''}
+                            ${(node.node_type === 'decision') ? `<button class="collapse-btn ${isExpanded ? 'expand-icon' : 'collapse-icon'}" onclick="toggleNode(${node.id})"></button>` : ''}
                         </div>
                     </div>
                     ${node.condition ? `<div style="font-size: 0.8em; margin-top: 5px;"><strong>条件:</strong> ${node.condition}</div>` : ''}
                     ${node.result ? `<div style="font-size: 0.8em; margin-top: 5px;"><strong>结果:</strong> ${node.result}</div>` : ''}
             `;
             
-            // 如果分支节点是决策节点，则继续渲染其分支
-            if (node.node_type === 'decision') {
+            // 如果分支节点是决策节点且已展开，则继续渲染其分支
+            if (node.node_type === 'decision' && isExpanded) {
                 const yesChild = allNodes.find(n => n.id === node.yes_child_id);
                 const noChild = allNodes.find(n => n.id === node.no_child_id);
                 
@@ -795,10 +1140,41 @@
                         </div>
                     </div>
                 `;
+            } else if (node.node_type === 'decision' && !isExpanded) {
+                // 节点已折叠
+                html += `<div style="text-align: center; margin-top: 5px;"><small>节点已折叠</small></div>`;
+            } else if (node.node_type === 'root' && isExpanded) {
+                // 根节点显示子节点
+                const childNodes = allNodes.filter(n => n.parent_id === node.id);
+                if (childNodes.length > 0) {
+                    html += `<div style="margin-top: 10px;">`;
+                    childNodes.forEach(child => {
+                        html += renderBranchNode(child, allNodes);
+                    });
+                    html += `</div>`;
+                } else {
+                    html += `
+                        <div style="margin-top: 10px; text-align: center;">
+                            <button class="btn" style="padding: 3px 8px; font-size: 12px;" 
+                                onclick="openCreateNodeModal(${node.tree_id}, ${node.id})">添加子节点</button>
+                        </div>
+                    `;
+                }
             }
             
             html += `</div>`;
             return html;
+        }
+        
+        // 添加子节点
+        function addChildNode(treeId, parentId, parentType) {
+            openCreateNodeModal(treeId, parentId, parentType);
+        }
+        
+        // 切换节点展开/折叠状态
+        function toggleNode(nodeId) {
+            nodeStates[nodeId] = !nodeStates[nodeId];
+            loadTreeNodes(currentTreeId); // 重新渲染树
         }
         
         // 获取节点类型名称
@@ -841,10 +1217,21 @@
                 // 决策节点的分支只能是决策节点或叶子节点
                 typeSelect.innerHTML += '<option value="decision">决策节点</option>';
                 typeSelect.innerHTML += '<option value="leaf">叶子节点</option>';
+            } else if (parentType === 'root') {
+                // 根节点的子节点只能是决策节点或叶子节点
+                typeSelect.innerHTML += '<option value="decision">决策节点</option>';
+                typeSelect.innerHTML += '<option value="leaf">叶子节点</option>';
             } else {
                 // 其他情况可以添加决策节点或叶子节点
                 typeSelect.innerHTML += '<option value="decision">决策节点</option>';
                 typeSelect.innerHTML += '<option value="leaf">叶子节点</option>';
+            }
+            
+            // 如果是决策节点的分支，预设节点类型
+            if (branchType === 'yes' || branchType === 'no') {
+                // 对于分支节点，可以是决策节点或叶子节点
+                typeSelect.value = 'decision'; // 默认为决策节点
+                toggleNodeTypeFields();
             }
             
             document.getElementById('create-node-modal').style.display = 'block';
@@ -929,6 +1316,11 @@
             if (condition) data.condition = condition;
             if (result) data.result = result;
             
+            // 如果是决策节点的分支，记录分支信息
+            if (parent_id && branch_type) {
+                data.branch_type = branch_type; // 'yes' 或 'no'
+            }
+            
             const method = id ? 'PUT' : 'POST';
             let url = id ? `/api/decision-tree-nodes/${id}` : '/api/decision-tree-nodes';
             
@@ -972,45 +1364,63 @@
         
         // 更新父节点的分支关联
         function updateParentBranch(parentId, childId, branchType) {
-            return new Promise((resolve, reject) => {
-                // 获取父节点当前数据
-                fetch(`/api/decision-tree-nodes/${parentId}`)
-                    .then(response => response.json())
-                    .then(parentData => {
-                        if (parentData.success) {
-                            const updateData = {...parentData.data};
-                            
-                            // 根据分支类型更新相应的字段
-                            if (branchType === 'yes') {
-                                updateData.yes_child_id = childId;
-                            } else if (branchType === 'no') {
-                                updateData.no_child_id = childId;
-                            }
-                            
-                            // 更新父节点
-                            return fetch(`/api/decision-tree-nodes/${parentId}`, {
-                                method: 'PUT',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                },
-                                body: JSON.stringify(updateData)
-                            });
-                        } else {
-                            reject(new Error('无法获取父节点数据'));
-                        }
-                    })
-                    .then(response => response.json())
-                    .then(result => {
-                        if (result.success) {
-                            resolve();
-                        } else {
-                            reject(new Error(result.message));
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error updating parent branch:', error);
-                        reject(error);
-                    });
+            // 不再需要这个函数，因为在后端已经处理了分支关联
+            return Promise.resolve();
+        }
+        
+        // 渲染节点头部
+        function renderNodeHeader(node) {
+            return `
+                <div class="node-header">
+                    <div>
+                        <strong>${node.name}</strong>
+                        <span class="node-type ${node.node_type}">${getNodeTypeName(node.node_type)}</span>
+                    </div>
+                    <div class="node-actions">
+                        <button class="action-btn edit-btn" onclick="editNode(${JSON.stringify(node).replace(/"/g, '&quot;')})">编辑</button>
+                        <button class="action-btn delete-btn" onclick="deleteNode(${node.id})">删除</button>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // 渲染节点详细信息
+        function renderNodeDetails(node) {
+            let html = '';
+            
+            if (node.condition) {
+                html += `<div class="node-condition"><strong>判定条件:</strong> ${node.condition}</div>`;
+            }
+            
+            if (node.result) {
+                html += `<div class="node-result"><strong>节点结果:</strong> ${node.result}</div>`;
+            }
+            
+            return html;
+        }
+        
+        // 绘制树连接线
+        function drawTreeConnections(rootNode, allNodes) {
+            // 移除之前的所有连线
+            const existingLines = document.querySelectorAll('.connection-line, .branch-label-line');
+            existingLines.forEach(line => line.remove());
+            
+            const container = document.querySelector('.decision-tree-container');
+            if (!container) return;
+            
+            // 遍历所有节点，绘制与子节点的连线
+            allNodes.forEach(node => {
+                if (node.node_type === 'decision') {
+                    // 决策节点绘制到子节点的连线
+                    drawLineToChild(node, node.yes_child_id, '是', container);
+                    drawLineToChild(node, node.no_child_id, '否', container);
+                } else if (node.node_type === 'root') {
+                    // 根节点绘制到子节点的连线
+                    const child = allNodes.find(n => n.parent_id === node.id);
+                    if (child) {
+                        drawLineToChild(node, child.id, '', container);
+                    }
+                }
             });
         }
     </script>
