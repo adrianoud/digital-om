@@ -15,6 +15,7 @@ from models import db, DeviceType, DeviceProperty, DeviceEvent, DeviceMethod, De
 
 # 添加新的模型导入
 from models import PropertyHistory, EventHistory, DataAnalysisProject, DataAnalysisResult
+from models import DecisionTree, DecisionTreeNode, KnowledgeGraph, KnowledgeGraphNode, KnowledgeGraphEdge
 
 # 导入Modbus服务器类
 from modbus_server_db import DatabaseModbusServer
@@ -679,6 +680,720 @@ def api_update_device_event(id):
             'message': str(e)
         }), 500
 
+@app.route('/knowledge-center')
+def knowledge_center():
+    """知识中心主页面"""
+    return render_template('knowledge_center.html')
+
+@app.route('/decision-tree')
+def decision_tree():
+    """决策树管理页面"""
+    return render_template('decision_tree.html')
+
+@app.route('/knowledge-graph')
+def knowledge_graph():
+    """知识图谱管理页面"""
+    return render_template('knowledge_graph.html')
+
+# 决策树 API 接口
+@app.route('/api/decision-trees', methods=['GET'])
+def api_get_decision_trees():
+    """获取所有决策树"""
+    try:
+        trees = DecisionTree.query.all()
+        return jsonify({
+            'success': True,
+            'data': [tree.to_dict() for tree in trees]
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+
+@app.route('/api/decision-trees', methods=['POST'])
+def api_create_decision_tree():
+    """创建决策树"""
+    try:
+        data = request.get_json()
+        name = data.get('name')
+        description = data.get('description')
+        
+        if not name:
+            return jsonify({
+                'success': False,
+                'message': '决策树名称不能为空'
+            }), 400
+        
+        tree = DecisionTree(
+            name=name,
+            description=description
+        )
+        
+        db.session.add(tree)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '决策树创建成功',
+            'data': tree.to_dict()
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+
+@app.route('/api/decision-tree-nodes/<int:id>', methods=['GET'])
+def api_get_decision_tree_node(id):
+    """获取单个决策树节点"""
+    try:
+        node = DecisionTreeNode.query.get(id)
+        if not node:
+            return jsonify({
+                'success': False,
+                'message': '节点不存在'
+            }), 404
+            
+        return jsonify({
+            'success': True,
+            'data': node.to_dict()
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+
+@app.route('/api/decision-trees/<int:id>', methods=['GET'])
+def api_get_decision_tree(id):
+    """获取单个决策树"""
+    try:
+        tree = DecisionTree.query.get(id)
+        if not tree:
+            return jsonify({
+                'success': False,
+                'message': '决策树不存在'
+            }), 404
+            
+        return jsonify({
+            'success': True,
+            'data': tree.to_dict()
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+
+
+@app.route('/api/decision-trees/<int:id>', methods=['PUT'])
+def api_update_decision_tree(id):
+    """更新决策树"""
+    try:
+        tree = DecisionTree.query.get(id)
+        if not tree:
+            return jsonify({
+                'success': False,
+                'message': '决策树不存在'
+            }), 404
+            
+        data = request.get_json()
+        tree.name = data.get('name', tree.name)
+        tree.description = data.get('description', tree.description)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '决策树更新成功',
+            'data': tree.to_dict()
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+
+@app.route('/api/decision-trees/<int:id>', methods=['DELETE'])
+def api_delete_decision_tree(id):
+    """删除决策树"""
+    try:
+        tree = DecisionTree.query.get(id)
+        if not tree:
+            return jsonify({
+                'success': False,
+                'message': '决策树不存在'
+            }), 404
+            
+        db.session.delete(tree)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '决策树删除成功'
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+
+# 决策树节点 API 接口
+@app.route('/api/decision-trees/<int:tree_id>/nodes', methods=['GET'])
+def api_get_decision_tree_nodes(tree_id):
+    """获取决策树的所有节点"""
+    try:
+        tree = DecisionTree.query.get(tree_id)
+        if not tree:
+            return jsonify({
+                'success': False,
+                'message': '决策树不存在'
+            }), 404
+        
+        nodes = DecisionTreeNode.query.filter_by(tree_id=tree_id).all()
+        return jsonify({
+            'success': True,
+            'data': [node.to_dict() for node in nodes]
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+
+@app.route('/api/decision-tree-nodes', methods=['POST'])
+def api_create_decision_tree_node():
+    """创建决策树节点"""
+    try:
+        data = request.get_json()
+        tree_id = data.get('tree_id')
+        name = data.get('name')
+        node_type = data.get('node_type')
+        
+        if not all([tree_id, name, node_type]):
+            return jsonify({
+                'success': False,
+                'message': '缺少必要参数'
+            }), 400
+        
+        # 检查决策树是否存在
+        tree = DecisionTree.query.get(tree_id)
+        if not tree:
+            return jsonify({
+                'success': False,
+                'message': '决策树不存在'
+            }), 404
+        
+        # 检查节点类型是否合法
+        valid_node_types = ['root', 'decision', 'leaf']
+        if node_type not in valid_node_types:
+            return jsonify({
+                'success': False,
+                'message': '节点类型不合法'
+            }), 400
+        
+        # 对于根节点，检查是否已存在
+        if node_type == 'root':
+            existing_root = DecisionTreeNode.query.filter_by(tree_id=tree_id, node_type='root').first()
+            if existing_root:
+                return jsonify({
+                    'success': False,
+                    'message': '该决策树已存在根节点'
+                }), 400
+        
+        node = DecisionTreeNode(
+            tree_id=tree_id,
+            name=name,
+            node_type=node_type,
+            parent_id=data.get('parent_id'),
+            condition=data.get('condition'),
+            result=data.get('result'),
+            yes_child_id=data.get('yes_child_id'),
+            no_child_id=data.get('no_child_id')
+        )
+        
+        db.session.add(node)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '节点创建成功',
+            'data': node.to_dict()
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+
+@app.route('/api/decision-tree-nodes/<int:id>', methods=['PUT'])
+def api_update_decision_tree_node(id):
+    """更新决策树节点"""
+    try:
+        node = DecisionTreeNode.query.get(id)
+        if not node:
+            return jsonify({
+                'success': False,
+                'message': '节点不存在'
+            }), 404
+        
+        data = request.get_json()
+        node.name = data.get('name', node.name)
+        node.condition = data.get('condition', node.condition)
+        node.result = data.get('result', node.result)
+        node.yes_child_id = data.get('yes_child_id', node.yes_child_id)
+        node.no_child_id = data.get('no_child_id', node.no_child_id)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '节点更新成功',
+            'data': node.to_dict()
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+
+@app.route('/api/decision-tree-nodes/<int:id>', methods=['DELETE'])
+def api_delete_decision_tree_node(id):
+    """删除决策树节点"""
+    try:
+        node = DecisionTreeNode.query.get(id)
+        if not node:
+            return jsonify({
+                'success': False,
+                'message': '节点不存在'
+            }), 404
+            
+        db.session.delete(node)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '节点删除成功'
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+
+# 知识图谱 API 接口
+@app.route('/api/knowledge-graphs', methods=['GET'])
+def api_get_knowledge_graphs():
+    """获取所有知识图谱"""
+    try:
+        graphs = KnowledgeGraph.query.all()
+        return jsonify({
+            'success': True,
+            'data': [graph.to_dict() for graph in graphs]
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+
+@app.route('/api/knowledge-graphs', methods=['POST'])
+def api_create_knowledge_graph():
+    """创建知识图谱"""
+    try:
+        data = request.get_json()
+        name = data.get('name')
+        description = data.get('description')
+        
+        if not name:
+            return jsonify({
+                'success': False,
+                'message': '知识图谱名称不能为空'
+            }), 400
+        
+        graph = KnowledgeGraph(
+            name=name,
+            description=description
+        )
+        
+        db.session.add(graph)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '知识图谱创建成功',
+            'data': graph.to_dict()
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+
+@app.route('/api/knowledge-graphs/<int:id>', methods=['GET'])
+def api_get_knowledge_graph(id):
+    """获取单个知识图谱"""
+    try:
+        graph = KnowledgeGraph.query.get(id)
+        if not graph:
+            return jsonify({
+                'success': False,
+                'message': '知识图谱不存在'
+            }), 404
+            
+        return jsonify({
+            'success': True,
+            'data': graph.to_dict()
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+
+@app.route('/api/knowledge-graphs/<int:id>', methods=['PUT'])
+def api_update_knowledge_graph(id):
+    """更新知识图谱"""
+    try:
+        graph = KnowledgeGraph.query.get(id)
+        if not graph:
+            return jsonify({
+                'success': False,
+                'message': '知识图谱不存在'
+            }), 404
+            
+        data = request.get_json()
+        graph.name = data.get('name', graph.name)
+        graph.description = data.get('description', graph.description)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '知识图谱更新成功',
+            'data': graph.to_dict()
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+
+@app.route('/api/knowledge-graphs/<int:id>', methods=['DELETE'])
+def api_delete_knowledge_graph(id):
+    """删除知识图谱"""
+    try:
+        graph = KnowledgeGraph.query.get(id)
+        if not graph:
+            return jsonify({
+                'success': False,
+                'message': '知识图谱不存在'
+            }), 404
+            
+        db.session.delete(graph)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '知识图谱删除成功'
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+
+# 知识图谱节点 API 接口
+@app.route('/api/knowledge-graphs/<int:graph_id>/nodes', methods=['GET'])
+def api_get_knowledge_graph_nodes(graph_id):
+    """获取知识图谱的所有节点"""
+    try:
+        graph = KnowledgeGraph.query.get(graph_id)
+        if not graph:
+            return jsonify({
+                'success': False,
+                'message': '知识图谱不存在'
+            }), 404
+        
+        nodes = KnowledgeGraphNode.query.filter_by(graph_id=graph_id).all()
+        return jsonify({
+            'success': True,
+            'data': [node.to_dict() for node in nodes]
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+
+@app.route('/api/knowledge-graph-nodes', methods=['POST'])
+def api_create_knowledge_graph_node():
+    """创建知识图谱节点"""
+    try:
+        data = request.get_json()
+        graph_id = data.get('graph_id')
+        name = data.get('name')
+        node_type = data.get('node_type')
+        properties = data.get('properties')
+        
+        if not all([graph_id, name, node_type]):
+            return jsonify({
+                'success': False,
+                'message': '缺少必要参数'
+            }), 400
+        
+        # 检查知识图谱是否存在
+        graph = KnowledgeGraph.query.get(graph_id)
+        if not graph:
+            return jsonify({
+                'success': False,
+                'message': '知识图谱不存在'
+            }), 404
+        
+        node = KnowledgeGraphNode(
+            graph_id=graph_id,
+            name=name,
+            node_type=node_type,
+            properties=properties
+        )
+        
+        db.session.add(node)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '节点创建成功',
+            'data': node.to_dict()
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+
+@app.route('/api/knowledge-graph-nodes/<int:id>', methods=['PUT'])
+def api_update_knowledge_graph_node(id):
+    """更新知识图谱节点"""
+    try:
+        node = KnowledgeGraphNode.query.get(id)
+        if not node:
+            return jsonify({
+                'success': False,
+                'message': '节点不存在'
+            }), 404
+        
+        data = request.get_json()
+        node.name = data.get('name', node.name)
+        node.node_type = data.get('node_type', node.node_type)
+        node.properties = data.get('properties', node.properties)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '节点更新成功',
+            'data': node.to_dict()
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+
+@app.route('/api/knowledge-graph-nodes/<int:id>', methods=['DELETE'])
+def api_delete_knowledge_graph_node(id):
+    """删除知识图谱节点"""
+    try:
+        node = KnowledgeGraphNode.query.get(id)
+        if not node:
+            return jsonify({
+                'success': False,
+                'message': '节点不存在'
+            }), 404
+            
+        db.session.delete(node)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '节点删除成功'
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+
+# 知识图谱边 API 接口
+@app.route('/api/knowledge-graphs/<int:graph_id>/edges', methods=['GET'])
+def api_get_knowledge_graph_edges(graph_id):
+    """获取知识图谱的所有边"""
+    try:
+        graph = KnowledgeGraph.query.get(graph_id)
+        if not graph:
+            return jsonify({
+                'success': False,
+                'message': '知识图谱不存在'
+            }), 404
+        
+        edges = KnowledgeGraphEdge.query.filter_by(graph_id=graph_id).all()
+        return jsonify({
+            'success': True,
+            'data': [edge.to_dict() for edge in edges]
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+
+@app.route('/api/knowledge-graph-edges', methods=['POST'])
+def api_create_knowledge_graph_edge():
+    """创建知识图谱边"""
+    try:
+        data = request.get_json()
+        graph_id = data.get('graph_id')
+        from_node_id = data.get('from_node_id')
+        to_node_id = data.get('to_node_id')
+        relation_type = data.get('relation_type')
+        properties = data.get('properties')
+        
+        if not all([graph_id, from_node_id, to_node_id, relation_type]):
+            return jsonify({
+                'success': False,
+                'message': '缺少必要参数'
+            }), 400
+        
+        # 检查知识图谱是否存在
+        graph = KnowledgeGraph.query.get(graph_id)
+        if not graph:
+            return jsonify({
+                'success': False,
+                'message': '知识图谱不存在'
+            }), 404
+        
+        # 检查节点是否存在
+        from_node = KnowledgeGraphNode.query.get(from_node_id)
+        to_node = KnowledgeGraphNode.query.get(to_node_id)
+        if not from_node or not to_node:
+            return jsonify({
+                'success': False,
+                'message': '起始节点或目标节点不存在'
+            }), 404
+        
+        edge = KnowledgeGraphEdge(
+            graph_id=graph_id,
+            from_node_id=from_node_id,
+            to_node_id=to_node_id,
+            relation_type=relation_type,
+            properties=properties
+        )
+        
+        db.session.add(edge)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '边创建成功',
+            'data': edge.to_dict()
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+
+@app.route('/api/knowledge-graph-edges/<int:id>', methods=['PUT'])
+def api_update_knowledge_graph_edge(id):
+    """更新知识图谱边"""
+    try:
+        edge = KnowledgeGraphEdge.query.get(id)
+        if not edge:
+            return jsonify({
+                'success': False,
+                'message': '边不存在'
+            }), 404
+        
+        data = request.get_json()
+        edge.relation_type = data.get('relation_type', edge.relation_type)
+        edge.properties = data.get('properties', edge.properties)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '边更新成功',
+            'data': edge.to_dict()
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+
+@app.route('/api/knowledge-graph-edges/<int:id>', methods=['DELETE'])
+def api_delete_knowledge_graph_edge(id):
+    """删除知识图谱边"""
+    try:
+        edge = KnowledgeGraphEdge.query.get(id)
+        if not edge:
+            return jsonify({
+                'success': False,
+                'message': '边不存在'
+            }), 404
+            
+        db.session.delete(edge)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '边删除成功'
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+
 @app.route('/api/device-events/<int:id>', methods=['DELETE'])
 def api_delete_device_event(id):
     """删除设备事件"""
@@ -1044,12 +1759,6 @@ def predictive_maintenance():
 @app.route('/performance-analysis')
 def performance_analysis():
     return '<h1>性能分析与优化模块</h1><p>分析系统性能并提供优化建议。</p>'
-
-@app.route('/knowledge-center')
-def knowledge_center():
-    return '<h1>知识中心模块</h1><p>存储和分享运维知识与最佳实践。</p>'
-
-
 
 
 @app.route('/api/property-history', methods=['POST'])

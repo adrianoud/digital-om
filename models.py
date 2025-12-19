@@ -365,3 +365,154 @@ class DataAnalysisResult(db.Model):
             'analysis_result': self.analysis_result,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
+
+
+class DecisionTreeNode(db.Model):
+    """决策树节点模型"""
+    __tablename__ = 'decision_tree_nodes'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    tree_id = db.Column(db.Integer, db.ForeignKey('decision_trees.id'), nullable=False)  # 所属决策树ID
+    parent_id = db.Column(db.Integer, db.ForeignKey('decision_tree_nodes.id'), nullable=True)  # 父节点ID
+    name = db.Column(db.String(200), nullable=False)  # 节点名称
+    node_type = db.Column(db.String(20), nullable=False)  # 节点类型: root(根节点), decision(决策节点), leaf(叶子节点)
+    condition = db.Column(db.Text, nullable=True)  # 判定条件（仅决策节点使用）
+    result = db.Column(db.Text, nullable=True)  # 节点结果（仅叶子节点使用）
+    yes_child_id = db.Column(db.Integer, db.ForeignKey('decision_tree_nodes.id'), nullable=True)  # 是分支子节点ID
+    no_child_id = db.Column(db.Integer, db.ForeignKey('decision_tree_nodes.id'), nullable=True)  # 否分支子节点ID
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    
+    # 关系
+    tree = db.relationship('DecisionTree', backref='nodes')
+    parent = db.relationship('DecisionTreeNode', remote_side=[id], backref='children', foreign_keys=[parent_id])
+    yes_child = db.relationship('DecisionTreeNode', foreign_keys=[yes_child_id])
+    no_child = db.relationship('DecisionTreeNode', foreign_keys=[no_child_id])
+    
+    def __repr__(self):
+        return f'<DecisionTreeNode {self.name}>'
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'tree_id': self.tree_id,
+            'parent_id': self.parent_id,
+            'name': self.name,
+            'node_type': self.node_type,
+            'condition': self.condition,
+            'result': self.result,
+            'yes_child_id': self.yes_child_id,
+            'no_child_id': self.no_child_id,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
+
+class DecisionTree(db.Model):
+    """决策树模型"""
+    __tablename__ = 'decision_trees'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)  # 决策树名称
+    description = db.Column(db.Text, nullable=True)  # 描述
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    
+    def __repr__(self):
+        return f'<DecisionTree {self.name}>'
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'description': self.description,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
+
+class KnowledgeGraph(db.Model):
+    """知识图谱模型"""
+    __tablename__ = 'knowledge_graphs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)  # 知识图谱名称
+    description = db.Column(db.Text, nullable=True)  # 描述
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    
+    def __repr__(self):
+        return f'<KnowledgeGraph {self.name}>'
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'description': self.description,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
+
+class KnowledgeGraphNode(db.Model):
+    """知识图谱节点模型"""
+    __tablename__ = 'knowledge_graph_nodes'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    graph_id = db.Column(db.Integer, db.ForeignKey('knowledge_graphs.id'), nullable=False)  # 所属知识图谱ID
+    name = db.Column(db.String(200), nullable=False)  # 节点名称
+    node_type = db.Column(db.String(50), nullable=False)  # 节点类型
+    properties = db.Column(db.Text, nullable=True)  # 节点属性（JSON格式）
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    
+    # 关系
+    graph = db.relationship('KnowledgeGraph', backref='nodes')
+    
+    def __repr__(self):
+        return f'<KnowledgeGraphNode {self.name}>'
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'graph_id': self.graph_id,
+            'name': self.name,
+            'node_type': self.node_type,
+            'properties': self.properties,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
+
+class KnowledgeGraphEdge(db.Model):
+    """知识图谱边模型"""
+    __tablename__ = 'knowledge_graph_edges'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    graph_id = db.Column(db.Integer, db.ForeignKey('knowledge_graphs.id'), nullable=False)  # 所属知识图谱ID
+    from_node_id = db.Column(db.Integer, db.ForeignKey('knowledge_graph_nodes.id'), nullable=False)  # 起始节点ID
+    to_node_id = db.Column(db.Integer, db.ForeignKey('knowledge_graph_nodes.id'), nullable=False)  # 目标节点ID
+    relation_type = db.Column(db.String(100), nullable=False)  # 关系类型
+    properties = db.Column(db.Text, nullable=True)  # 边属性（JSON格式）
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    
+    # 关系
+    graph = db.relationship('KnowledgeGraph', backref='edges')
+    from_node = db.relationship('KnowledgeGraphNode', foreign_keys=[from_node_id])
+    to_node = db.relationship('KnowledgeGraphNode', foreign_keys=[to_node_id])
+    
+    def __repr__(self):
+        return f'<KnowledgeGraphEdge {self.relation_type}>'
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'graph_id': self.graph_id,
+            'from_node_id': self.from_node_id,
+            'to_node_id': self.to_node_id,
+            'relation_type': self.relation_type,
+            'properties': self.properties,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
