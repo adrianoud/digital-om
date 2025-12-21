@@ -378,6 +378,7 @@ class DecisionTreeNode(db.Model):
     node_type = db.Column(db.String(20), nullable=False)  # 节点类型: root(根节点), decision(决策节点), leaf(叶子节点)
     condition = db.Column(db.Text, nullable=True)  # 判定条件（仅决策节点使用）
     result = db.Column(db.Text, nullable=True)  # 节点结果（仅叶子节点使用）
+    decision_input = db.Column(db.Text, nullable=True)  # 待决策内容（仅根节点使用）
     yes_child_id = db.Column(db.Integer, db.ForeignKey('decision_tree_nodes.id'), nullable=True)  # 是分支子节点ID
     no_child_id = db.Column(db.Integer, db.ForeignKey('decision_tree_nodes.id'), nullable=True)  # 否分支子节点ID
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
@@ -401,6 +402,7 @@ class DecisionTreeNode(db.Model):
             'node_type': self.node_type,
             'condition': self.condition,
             'result': self.result,
+            'decision_input': self.decision_input,
             'yes_child_id': self.yes_child_id,
             'no_child_id': self.no_child_id,
             'created_at': self.created_at.isoformat() if self.created_at else None,
@@ -415,8 +417,12 @@ class DecisionTree(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False)  # 决策树名称
     description = db.Column(db.Text, nullable=True)  # 描述
+    device_type_id = db.Column(db.Integer, db.ForeignKey('device_types.id'), nullable=True)  # 关联的设备类型ID
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    
+    # 关系
+    device_type = db.relationship('DeviceType', backref='decision_trees')
     
     def __repr__(self):
         return f'<DecisionTree {self.name}>'
@@ -426,6 +432,7 @@ class DecisionTree(db.Model):
             'id': self.id,
             'name': self.name,
             'description': self.description,
+            'device_type_id': self.device_type_id,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }

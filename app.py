@@ -719,6 +719,7 @@ def api_create_decision_tree():
         data = request.get_json()
         name = data.get('name')
         description = data.get('description')
+        device_type_id = data.get('device_type_id')
         
         if not name:
             return jsonify({
@@ -728,7 +729,8 @@ def api_create_decision_tree():
         
         tree = DecisionTree(
             name=name,
-            description=description
+            description=description,
+            device_type_id=device_type_id
         )
         
         db.session.add(tree)
@@ -791,7 +793,6 @@ def api_get_decision_tree(id):
         }), 500
 
 
-
 @app.route('/api/decision-trees/<int:id>', methods=['PUT'])
 def api_update_decision_tree(id):
     """更新决策树"""
@@ -806,6 +807,7 @@ def api_update_decision_tree(id):
         data = request.get_json()
         tree.name = data.get('name', tree.name)
         tree.description = data.get('description', tree.description)
+        tree.device_type_id = data.get('device_type_id', tree.device_type_id)
         
         db.session.commit()
         
@@ -937,6 +939,7 @@ def api_create_decision_tree_node():
             parent_id=data.get('parent_id'),
             condition=data.get('condition'),
             result=data.get('result'),
+            decision_input=data.get('decision_input'),
             yes_child_id=data.get('yes_child_id'),
             no_child_id=data.get('no_child_id')
         )
@@ -986,6 +989,7 @@ def api_update_decision_tree_node(id):
         node.name = data.get('name', node.name)
         node.condition = data.get('condition', node.condition)
         node.result = data.get('result', node.result)
+        node.decision_input = data.get('decision_input', node.decision_input)
         node.yes_child_id = data.get('yes_child_id', node.yes_child_id)
         node.no_child_id = data.get('no_child_id', node.no_child_id)
         
@@ -1002,19 +1006,6 @@ def api_update_decision_tree_node(id):
             'success': False,
             'message': str(e)
         }), 500
-
-
-@app.route('/api/decision-tree-nodes/<int:id>', methods=['DELETE'])
-def api_delete_decision_tree_node(id):
-    """删除决策树节点"""
-    try:
-        node = DecisionTreeNode.query.get(id)
-        if not node:
-            return jsonify({
-                'success': False,
-                'message': '节点不存在'
-            }), 404
-            
         db.session.delete(node)
         db.session.commit()
         
@@ -1776,6 +1767,47 @@ def api_get_device_property_modbus_binding(device_id, property_id):
                 'data': None
             })
     except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+
+@app.route('/api/device/<int:device_id>/property/<int:property_id>/modbus-binding', methods=['PUT'])
+def api_update_device_property_modbus_binding(device_id, property_id):
+    """更新设备属性的Modbus绑定信息"""
+    try:
+        # 获取请求数据
+        data = request.get_json()
+        
+        # 查找现有的绑定记录
+        binding = DevicePropertyBinding.query.filter_by(
+            device_id=device_id,
+            property_id=property_id
+        ).first()
+        
+        # 如果不存在，则创建新的绑定记录
+        if not binding:
+            binding = DevicePropertyBinding(
+                device_id=device_id,
+                property_id=property_id
+            )
+            db.session.add(binding)
+        
+        # 更新绑定信息
+        binding.modbus_point_id = data.get('modbus_point_id')
+        binding.calculation_expression = data.get('calculation_expression')
+        
+        # 提交更改到数据库
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '绑定信息更新成功',
+            'data': binding.to_dict()
+        })
+    except Exception as e:
+        db.session.rollback()
         return jsonify({
             'success': False,
             'message': str(e)

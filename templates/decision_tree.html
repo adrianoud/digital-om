@@ -441,6 +441,13 @@
                     <textarea id="tree-description" rows="3"></textarea>
                 </div>
                 <div class="form-group">
+                    <label for="tree-device-type">设备类型</label>
+                    <select id="tree-device-type">
+                        <option value="">无关联设备类型</option>
+                        <!-- 设备类型选项将通过JavaScript动态填充 -->
+                    </select>
+                </div>
+                <div class="form-group">
                     <button type="submit" class="btn">保存</button>
                     <button type="button" class="btn btn-secondary" onclick="closeTreeModal()">取消</button>
                 </div>
@@ -487,7 +494,13 @@
                 </div>
                 <div class="form-group" id="condition-field" style="display: none;">
                     <label for="node-condition">判定条件</label>
+                    <div id="condition-selector" style="margin-bottom: 10px;"></div>
                     <textarea id="node-condition" rows="3" placeholder="例如: temperature > 30"></textarea>
+                </div>
+                <div class="form-group" id="decision-input-field" style="display: none;">
+                    <label for="node-decision-input">待决策内容</label>
+                    <div id="decision-input-selector" style="margin-bottom: 10px;"></div>
+                    <textarea id="node-decision-input" rows="3" placeholder="请输入待决策内容"></textarea>
                 </div>
                 <div class="form-group" id="result-field" style="display: none;">
                     <label for="node-result">节点结果</label>
@@ -515,6 +528,100 @@
             document.getElementById('node-form').addEventListener('submit', handleNodeSubmit);
         });
         
+        // 打开新建决策树模态框
+        function openCreateTreeModal() {
+            document.getElementById('tree-modal-title').textContent = '新建决策树';
+            document.getElementById('tree-id').value = '';
+            document.getElementById('tree-name').value = '';
+            document.getElementById('tree-description').value = '';
+            document.getElementById('tree-device-type').value = '';
+            document.getElementById('tree-modal').style.display = 'block';
+            loadDeviceTypes(); // 加载设备类型列表
+        }
+        
+        // 编辑决策树
+        function editTree(id, name, description, deviceTypeId) {
+            document.getElementById('tree-modal-title').textContent = '编辑决策树';
+            document.getElementById('tree-id').value = id;
+            document.getElementById('tree-name').value = name;
+            document.getElementById('tree-description').value = description || '';
+            document.getElementById('tree-device-type').value = deviceTypeId || '';
+            document.getElementById('tree-modal').style.display = 'block';
+            loadDeviceTypes(); // 加载设备类型列表
+        }
+        
+        // 处理决策树表单提交
+        function handleTreeSubmit(e) {
+            e.preventDefault();
+            
+            const id = document.getElementById('tree-id').value;
+            const name = document.getElementById('tree-name').value;
+            const description = document.getElementById('tree-description').value;
+            const device_type_id = document.getElementById('tree-device-type').value;
+            
+            const data = { name, description };
+            if (device_type_id) {
+                data.device_type_id = parseInt(device_type_id);
+            }
+            
+            const method = id ? 'PUT' : 'POST';
+            const url = id ? `/api/decision-trees/${id}` : '/api/decision-trees';
+            
+            fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage(data.message, 'success');
+                    closeTreeModal();
+                    loadTrees();
+                } else {
+                    showMessage(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMessage('操作失败', 'error');
+            });
+        }
+        
+        // 加载设备类型列表
+        function loadDeviceTypes() {
+            fetch('/api/device-types')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const select = document.getElementById('tree-device-type');
+                        // 保存当前选中的值
+                        const currentValue = select.value;
+                        
+                        // 清空现有选项（除了第一个"无关联设备类型"选项）
+                        while (select.options.length > 1) {
+                            select.remove(1);
+                        }
+                        
+                        // 添加设备类型选项
+                        data.data.forEach(type => {
+                            const option = document.createElement('option');
+                            option.value = type.id;
+                            option.textContent = type.name;
+                            select.appendChild(option);
+                        });
+                        
+                        // 恢复之前的选中值
+                        select.value = currentValue;
+                    }
+                })
+                .catch(error => {
+                    console.error('加载设备类型失败:', error);
+                });
+        }
+        
         // 获取决策树列表
         function loadTrees() {
             fetch('/api/decision-trees')
@@ -536,7 +643,7 @@
                                     <td>${tree.description || ''}</td>
                                     <td>${new Date(tree.created_at).toLocaleString()}</td>
                                     <td>
-                                        <button class="action-btn edit-btn" onclick="editTree(${tree.id}, '${tree.name}', '${tree.description || ''}')">编辑</button>
+                                        <button class="action-btn edit-btn" onclick="editTree(${tree.id}, '${tree.name}', '${tree.description || ''}', ${tree.device_type_id || 'null'})">编辑</button>
                                         <button class="action-btn" onclick="manageNodes(${tree.id})">管理节点</button>
                                         <button class="action-btn delete-btn" onclick="deleteTree(${tree.id})">删除</button>
                                     </td>
@@ -565,62 +672,9 @@
             }, 3000);
         }
         
-        // 打开新建决策树模态框
-        function openCreateTreeModal() {
-            document.getElementById('tree-modal-title').textContent = '新建决策树';
-            document.getElementById('tree-id').value = '';
-            document.getElementById('tree-name').value = '';
-            document.getElementById('tree-description').value = '';
-            document.getElementById('tree-modal').style.display = 'block';
-        }
-        
-        // 编辑决策树
-        function editTree(id, name, description) {
-            document.getElementById('tree-modal-title').textContent = '编辑决策树';
-            document.getElementById('tree-id').value = id;
-            document.getElementById('tree-name').value = name;
-            document.getElementById('tree-description').value = description;
-            document.getElementById('tree-modal').style.display = 'block';
-        }
-        
         // 关闭决策树模态框
         function closeTreeModal() {
             document.getElementById('tree-modal').style.display = 'none';
-        }
-        
-        // 处理决策树表单提交
-        function handleTreeSubmit(e) {
-            e.preventDefault();
-            
-            const id = document.getElementById('tree-id').value;
-            const name = document.getElementById('tree-name').value;
-            const description = document.getElementById('tree-description').value;
-            
-            const data = { name, description };
-            const method = id ? 'PUT' : 'POST';
-            const url = id ? `/api/decision-trees/${id}` : '/api/decision-trees';
-            
-            fetch(url, {
-                method: method,
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data)
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    showMessage(data.message, 'success');
-                    closeTreeModal();
-                    loadTrees();
-                } else {
-                    showMessage(data.message, 'error');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                showMessage('操作失败', 'error');
-            });
         }
         
         // 删除决策树
@@ -741,6 +795,10 @@
             
             if (node.condition) {
                 html += `<div class="node-condition"><strong>判定条件:</strong> ${node.condition}</div>`;
+            }
+            
+            if (node.decision_input) {
+                html += `<div class="node-condition"><strong>待决策内容:</strong> ${node.decision_input}</div>`;
             }
             
             if (node.result) {
@@ -921,6 +979,10 @@
             document.getElementById('node-type').value = '';
             document.getElementById('node-condition').value = '';
             document.getElementById('node-result').value = '';
+            document.getElementById('node-decision-input').value = '';
+            
+            // 启用节点类型选择（新建时可以更改）
+            document.getElementById('node-type').disabled = false;
             
             // 根据父节点类型设置节点类型选项
             const typeSelect = document.getElementById('node-type');
@@ -952,7 +1014,123 @@
                 toggleNodeTypeFields();
             }
             
+            // 获取当前决策树的设备类型并加载相关选项
+            fetch(`/api/decision-trees/${treeId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.data.device_type_id) {
+                        // 如果决策树有关联的设备类型，加载设备属性和事件
+                        if (parentId === null) {
+                            // 只有根节点才加载事件
+                            loadDeviceTypeEvents(data.data.device_type_id);
+                        } else {
+                            // 决策节点加载属性
+                            loadDeviceTypeProperties(data.data.device_type_id);
+                        }
+                    } else {
+                        // 隐藏设备属性和事件选择器
+                        document.getElementById('condition-selector').innerHTML = '';
+                        document.getElementById('condition-selector').style.display = 'none';
+                        document.getElementById('decision-input-selector').innerHTML = '';
+                        document.getElementById('decision-input-selector').style.display = 'none';
+                    }
+                });
+            
             document.getElementById('create-node-modal').style.display = 'block';
+        }
+        
+        // 加载设备类型属性（用于决策节点）
+        function loadDeviceTypeProperties(deviceTypeId) {
+            fetch(`/api/device-types/${deviceTypeId}/properties`)
+                .then(res => res.json())
+                .then(propertiesData => {
+                    const conditionSelector = document.getElementById('condition-selector');
+                    
+                    if (propertiesData.success) {
+                        let selectorHtml = '<div style="margin-bottom: 10px;">';
+                        
+                        // 添加属性选择
+                        if (propertiesData.data.length > 0) {
+                            selectorHtml += '<div><strong>设备属性:</strong></div>';
+                            propertiesData.data.forEach(prop => {
+                                selectorHtml += `<button type="button" class="btn btn-secondary" style="margin: 2px; padding: 3px 6px; font-size: 12px;" onclick="insertIntoCondition('${prop.identifier}')">${prop.name}</button>`;
+                            });
+                        }
+                        
+                        selectorHtml += '</div>';
+                        conditionSelector.innerHTML = selectorHtml;
+                        conditionSelector.style.display = 'block';
+                    } else {
+                        conditionSelector.innerHTML = '';
+                        conditionSelector.style.display = 'none';
+                    }
+                }).catch(error => {
+                    console.error('加载设备属性失败:', error);
+                    const conditionSelector = document.getElementById('condition-selector');
+                    conditionSelector.innerHTML = '';
+                    conditionSelector.style.display = 'none';
+                });
+        }
+        
+        // 加载设备类型事件（用于根节点）
+        function loadDeviceTypeEvents(deviceTypeId) {
+            fetch(`/api/device-types/${deviceTypeId}/events`)
+                .then(res => res.json())
+                .then(eventsData => {
+                    const decisionInputSelector = document.getElementById('decision-input-selector');
+                    
+                    if (eventsData.success) {
+                        let selectorHtml = '<div style="margin-bottom: 10px;">';
+                        
+                        // 添加事件选择
+                        if (eventsData.data.length > 0) {
+                            selectorHtml += '<div><strong>设备事件:</strong></div>';
+                            eventsData.data.forEach(event => {
+                                selectorHtml += `<button type="button" class="btn btn-secondary" style="margin: 2px; padding: 3px 6px; font-size: 12px;" onclick="insertIntoDecisionInput('${event.identifier}')">${event.name}</button>`;
+                            });
+                        }
+                        
+                        selectorHtml += '</div>';
+                        decisionInputSelector.innerHTML = selectorHtml;
+                        decisionInputSelector.style.display = 'block';
+                    } else {
+                        decisionInputSelector.innerHTML = '';
+                        decisionInputSelector.style.display = 'none';
+                    }
+                }).catch(error => {
+                    console.error('加载设备事件失败:', error);
+                    const decisionInputSelector = document.getElementById('decision-input-selector');
+                    decisionInputSelector.innerHTML = '';
+                    decisionInputSelector.style.display = 'none';
+                });
+        }
+        
+        // 在条件输入框中插入文本
+        function insertIntoCondition(text) {
+            const conditionInput = document.getElementById('node-condition');
+            const startPos = conditionInput.selectionStart;
+            const endPos = conditionInput.selectionEnd;
+            const beforeText = conditionInput.value.substring(0, startPos);
+            const afterText = conditionInput.value.substring(endPos);
+            conditionInput.value = beforeText + text + afterText;
+            conditionInput.focus();
+            // 设置光标位置
+            const newCursorPos = startPos + text.length;
+            conditionInput.setSelectionRange(newCursorPos, newCursorPos);
+        }
+        
+        // 在决策输入框中插入文本
+        function insertIntoDecisionInput(text) {
+            const decisionInput = document.getElementById('node-decision-input');
+            const startPos = decisionInput.selectionStart;
+            const endPos = decisionInput.selectionEnd;
+            const beforeText = decisionInput.value.substring(0, startPos);
+            const afterText = decisionInput.value.substring(endPos);
+            decisionInput.value = beforeText + text + afterText;
+            decisionInput.focus();
+            // 设置光标位置
+            const newCursorPos = startPos + text.length;
+            decisionInput.setSelectionRange(newCursorPos, newCursorPos);
         }
         
         // 编辑节点
@@ -969,9 +1147,35 @@
             // 设置条件和结果字段
             document.getElementById('node-condition').value = nodeData.condition || '';
             document.getElementById('node-result').value = nodeData.result || '';
+            document.getElementById('node-decision-input').value = nodeData.decision_input || '';
             
             // 根据节点类型显示相应字段
             toggleNodeTypeFields();
+            
+            // 节点类型在编辑时不可更改
+            document.getElementById('node-type').disabled = true;
+            
+            // 获取当前决策树的设备类型并加载相关选项
+            fetch(`/api/decision-trees/${nodeData.tree_id}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.data.device_type_id) {
+                        // 如果决策树有关联的设备类型，加载设备属性和事件
+                        if (nodeData.node_type === 'root') {
+                            // 根节点加载事件
+                            loadDeviceTypeEvents(data.data.device_type_id);
+                        } else if (nodeData.node_type === 'decision') {
+                            // 决策节点加载属性
+                            loadDeviceTypeProperties(data.data.device_type_id);
+                        }
+                    } else {
+                        // 隐藏设备属性和事件选择器
+                        document.getElementById('condition-selector').innerHTML = '';
+                        document.getElementById('condition-selector').style.display = 'none';
+                        document.getElementById('decision-input-selector').innerHTML = '';
+                        document.getElementById('decision-input-selector').style.display = 'none';
+                    }
+                });
             
             document.getElementById('create-node-modal').style.display = 'block';
         }
@@ -1003,6 +1207,8 @@
         // 关闭创建节点模态框
         function closeCreateNodeModal() {
             document.getElementById('create-node-modal').style.display = 'none';
+            // 重新启用节点类型选择
+            document.getElementById('node-type').disabled = false;
         }
         
         // 切换节点类型字段显示
@@ -1010,9 +1216,11 @@
             const type = document.getElementById('node-type').value;
             const conditionField = document.getElementById('condition-field');
             const resultField = document.getElementById('result-field');
+            const decisionInputField = document.getElementById('decision-input-field');
             
             conditionField.style.display = (type === 'decision') ? 'block' : 'none';
             resultField.style.display = (type === 'leaf') ? 'block' : 'none';
+            decisionInputField.style.display = (type === 'root') ? 'block' : 'none';
         }
         
         // 处理节点表单提交
@@ -1027,12 +1235,14 @@
             const node_type = document.getElementById('node-type').value;
             const condition = document.getElementById('node-condition').value;
             const result = document.getElementById('node-result').value;
+            const decision_input = document.getElementById('node-decision-input').value;
             
             const data = { tree_id, name, node_type };
             
             if (parent_id) data.parent_id = parent_id;
             if (condition) data.condition = condition;
             if (result) data.result = result;
+            if (decision_input) data.decision_input = decision_input;
             
             // 如果是决策节点的分支，记录分支信息
             if (parent_id && branch_type) {
