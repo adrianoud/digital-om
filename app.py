@@ -245,22 +245,141 @@ def device_models():
     """设备模型管理主页面"""
     return render_template('device_models.html')
 
-@app.route('/api/device-types', methods=['GET'])
-def api_get_device_types():
-    """获取所有设备类型"""
-    try:
-        device_types = DeviceType.query.all()
-        return jsonify({
-            'success': True,
-            'data': [dt.to_dict() for dt in device_types]
-        })
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'message': str(e)
-        }), 500
 
-@app.route('/api/device-types', methods=['POST'])
+@app.route('/device-encyclopedia')
+def device_encyclopedia():
+    """设备百科页面"""
+    # 随机生成一个设备介绍
+    import random
+    
+    # 设备类型列表
+    device_types = [
+        "离心泵", "螺杆泵", "齿轮泵", "柱塞泵",
+        "离心风机", "轴流风机", "罗茨风机",
+        "板式换热器", "管壳式换热器", "螺旋板式换热器",
+        "带式输送机", "链式输送机", "螺旋输送机",
+        "减速机", "变频器", "软启动器",
+        "压力传感器", "温度传感器", "流量传感器"
+    ]
+    
+    # 设备图标
+    device_icons = ["🔧", "⚙️", "🛠️", "🔩", "🔧", "🔌", "📱", "🌡️", "📡", "💡"]
+    
+    # 随机生成设备信息
+    device_type = random.choice(device_types)
+    device_icon = random.choice(device_icons)
+    
+    # 使用火山引擎API生成设备百科内容
+    principle = generate_device_content_with_volcano(f"请用中文详细介绍{device_type}的工作原理，内容专业、准确。")
+    function = generate_device_content_with_volcano(f"请用中文详细介绍{device_type}的主要功能和特点。")
+    application = generate_device_content_with_volcano(f"请用中文详细介绍{device_type}的应用场景和行业。")
+    
+    device = {
+        "name": device_type,
+        "type": device_type,
+        "icon": device_icon,
+        "principle": principle,
+        "function": function,
+        "application": application
+    }
+    
+    return render_template('device_encyclopedia.html', device=device)
+
+
+def generate_device_content_with_volcano(prompt):
+    """
+    使用火山引擎Ark API生成设备相关内容（基于requests实现）
+    """
+    try:
+        import requests
+        import json
+        
+        # 火山引擎API配置
+        api_endpoint = "https://ark.cn-beijing.volces.com/api/v3/chat/completions"  # API endpoint
+        api_key = "c9b588a6-7256-463f-8b38-eb7e12ab2ca5"  # API Key
+        model_id = "doubao-seed-1-6-flash-250828"  # 使用示例中的模型ID
+        
+        # 请求头
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        # 进一步优化提示词，要求极简回答并分段
+        optimized_prompt = prompt + "。请用极简语言回答，每段不超过50字，只返回核心要点，按：【标题】内容 格式"
+        
+        # 请求体 - 进一步减少max_tokens以提升响应速度
+        data = {
+            "model": model_id,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": optimized_prompt
+                }
+            ],
+            "temperature": 0.3,  # 进一步降低随机性以提升响应速度
+            "max_tokens": 100  # 进一步减少token数量
+        }
+        
+        # 发送POST请求，进一步缩短超时时间
+        print("正在调用火山引擎API...")
+        response = requests.post(api_endpoint, headers=headers, data=json.dumps(data), timeout=8)  # 缩短超时时间到8秒
+        
+        # 检查响应状态
+        if response.status_code == 200:
+            result = response.json()
+            answer = result["choices"][0]["message"]["content"]
+            print("成功获取API响应")
+            return answer
+        else:
+            print(f"API调用失败，状态码: {response.status_code}")
+            print(f"响应内容: {response.text}")
+            
+    except Exception as e:
+        print(f"调用火山引擎API时出错: {e}")
+    
+    # 使用模拟内容（API调用失败时的后备方案）
+    print("使用模拟内容生成器")
+    import random
+    
+    # 提取设备名称
+    device_name = ""
+    if "详细介绍" in prompt:
+        if "的工作原理" in prompt:
+            device_name = prompt.split("详细介绍")[1].split("的工作原理")[0]
+        elif "的主要功能" in prompt:
+            device_name = prompt.split("详细介绍")[1].split("的主要功能")[0]
+        elif "的应用场景" in prompt:
+            device_name = prompt.split("详细介绍")[1].split("的应用场景")[0]
+    
+    # 工作原理模板（极简版）
+    principle_templates = [
+        f"【原理】{device_name}基于{'流体力学' if '泵' in device_name or '风机' in device_name else '机械传动'}设计，实现高效性能。",
+        f"【核心】采用{random.choice(['模块化', '集成式'])}结构，配备{random.choice(['高效电机', '传感器'])}确保稳定运行。"
+    ]
+    
+    # 主要功能模板（极简版）
+    function_templates = [
+        f"【功能】{device_name}具备{random.choice(['自动调节', '远程监控'])}功能，适应{random.choice(['复杂', '恶劣'])}工况。",
+        f"【特点】支持{random.choice(['数据采集', '智能报警'])}，实现{random.choice(['连续运行', '节能运行'])}。"
+    ]
+    
+    # 应用场景模板（极简版）
+    application_templates = [
+        f"【应用】广泛用于{random.choice(['石油化工', '电力能源'])}等行业，适用于{random.choice(['连续生产', '精密控制'])}。",
+        f"【案例】在{random.choice(['大型工厂', '基础设施'])}中发挥关键作用，保障{random.choice(['生产效率', '系统安全'])}。"
+    ]
+    
+    # 根据提示词类型选择合适的模板
+    if "工作原理" in prompt:
+        return random.choice(principle_templates)
+    elif "主要功能" in prompt:
+        return random.choice(function_templates)
+    elif "应用场景" in prompt:
+        return random.choice(application_templates)
+    else:
+        return f"【简介】{device_name}是工业设备，具有技术先进、性能稳定等特点。"
+
 def api_create_device_type():
     """创建设备类型"""
     try:
@@ -685,15 +804,24 @@ def knowledge_center():
     """知识中心主页面"""
     return render_template('knowledge_center.html')
 
+
+@app.route('/modbus-management')
+def modbus_management():
+    """Modbus点位管理页面"""
+    return render_template('modbus_management.html')
+
+
 @app.route('/decision-tree')
 def decision_tree():
     """决策树管理页面"""
     return render_template('decision_tree.html')
 
+
 @app.route('/knowledge-graph')
 def knowledge_graph():
     """知识图谱管理页面"""
     return render_template('knowledge_graph.html')
+
 
 # 决策树 API 接口
 @app.route('/api/decision-trees', methods=['GET'])
@@ -1746,6 +1874,21 @@ def get_device_type_by_name(name):
         }), 500
 
 
+@app.route('/api/device-types', methods=['GET'])
+def api_get_device_types():
+    """获取所有设备类型"""
+    try:
+        device_types = DeviceType.query.all()
+        return jsonify({
+            'success': True,
+            'data': [dt.to_dict() for dt in device_types]
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
 @app.route('/api/device/<int:device_id>/property/<int:property_id>/modbus-binding', methods=['GET'])
 def api_get_device_property_modbus_binding(device_id, property_id):
     """获取设备属性的Modbus绑定信息"""
@@ -1812,6 +1955,21 @@ def api_update_device_property_modbus_binding(device_id, property_id):
             'success': False,
             'message': str(e)
         }), 500
+
+
+@app.route('/device-property-binding')
+def device_property_binding():
+    """设备属性绑定管理页面"""
+    device_id = request.args.get('device_id', type=int)
+    if not device_id:
+        return "缺少设备ID参数", 400
+    
+    # 获取设备信息
+    device = Device.query.get(device_id)
+    if not device:
+        return "设备不存在", 404
+    
+    return render_template('device_property_binding.html', device=device)
 
 
 # 已删除所有与Excel相关的函数，现在使用数据库进行设备信息存储
@@ -2237,26 +2395,11 @@ def data_analysis_project(project_id):
     """具体的数据分析项目页面"""
     return render_template('data_analysis.html', project_id=project_id)
 
+# import json
+# import time
+# import datetime
+# import random
 
-@app.route('/modbus-management')
-def modbus_management():
-    """Modbus点位管理页面"""
-    return render_template('modbus_management.html')
-
-
-@app.route('/device-property-binding')
-def device_property_binding():
-    """设备属性绑定管理页面"""
-    device_id = request.args.get('device_id', type=int)
-    if not device_id:
-        return "缺少设备ID参数", 400
-    
-    # 获取设备信息
-    device = Device.query.get(device_id)
-    if not device:
-        return "设备不存在", 404
-    
-    return render_template('device_property_binding.html', device=device)
 
 
 # 添加全局变量来存储Modbus服务器实例

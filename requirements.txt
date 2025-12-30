@@ -8,3 +8,4 @@ python-dotenv==1.0.0
 pyserial==3.5
 pymodbus==3.4.1
 openpyxl==3.1.2
+volcengine>=1.0.0

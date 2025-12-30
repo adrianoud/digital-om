@@ -220,6 +220,18 @@
             overflow: visible; /* 允许连接线超出容器 */
             position: relative;
             min-height: 500px;
+            min-width: 1000px; /* 确保容器有足够的最小宽度 */
+        }
+        
+        /* 添加滚动容器 */
+        .scroll-container {
+            overflow: auto;
+            max-width: 100%;
+            max-height: 70vh;
+            position: relative;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            margin: 20px 0;
         }
         
         .tree-node {
@@ -749,10 +761,12 @@
                 return;
             }
             
-            // 渲染整个决策树
+            // 渲染整个决策树，添加滚动容器
             container.innerHTML = `
-                <div class="decision-tree-container" id="tree-container">
-                    ${renderTreeNode(rootNode, nodes)}
+                <div class="scroll-container">
+                    <div class="decision-tree-container" id="tree-container">
+                        ${renderTreeNode(rootNode, nodes)}
+                    </div>
                 </div>
             `;
             
@@ -874,7 +888,7 @@
             return html;
         }
         
-        // 计算节点位置
+        // 计算节点位置 - 修改节点间距以适应滚动区域
         function calculateNodePosition(node, allNodes, positions, level, index) {
             // 如果已经提供了位置，则直接使用
             if (positions) {
@@ -913,18 +927,18 @@
                 parentPos = calculateNodePosition(parentNode, allNodes, null, level - 1, index);
             }
             
-            // 根据节点类型和索引计算位置
+            // 根据节点类型和索引计算位置，增加节点间距
             if (parentNode.node_type === 'decision') {
-                // 决策节点的子节点放在下方左右两侧
-                const xOffset = parentNode.yes_child_id === node.id ? -250 : 250;
+                // 决策节点的子节点放在下方左右两侧，增加水平间距
+                const xOffset = parentNode.yes_child_id === node.id ? -300 : 300;
                 return { 
                     x: parentPos.x + xOffset, 
                     y: parentPos.y + 200 
                 };
             } else {
-                // 根节点的子节点居中排列
+                // 根节点的子节点居中排列，增加水平间距
                 return { 
-                    x: parentPos.x - 100 + index * 200, 
+                    x: parentPos.x - 200 + index * 400, 
                     y: parentPos.y + 150 
                 };
             }
@@ -1371,111 +1385,7 @@
             });
         }
         
-        // 绘制到子节点的连线
-        function drawLineToChild(parentNode, childId, branchLabel, container) {
-            if (!childId) return;
-            
-            const parentElement = document.getElementById(`tree-node-${parentNode.id}`);
-            const childElement = document.getElementById(`tree-node-${childId}`);
-            
-            if (!parentElement || !childElement) return;
-            
-            const parentRect = parentElement.getBoundingClientRect();
-            const childRect = childElement.getBoundingClientRect();
-            
-            const containerRect = container.getBoundingClientRect();
-            
-            // 计算相对位置
-            const parentX = parentRect.left - containerRect.left + parentRect.width / 2;
-            const parentY = parentRect.top - containerRect.top + parentRect.height;
-            const childX = childRect.left - containerRect.left + childRect.width / 2;
-            const childY = childRect.top - containerRect.top;
-            
-            // 创建水平线
-            const horizontalLine = document.createElement('div');
-            horizontalLine.className = 'connection-line horizontal-line';
-            horizontalLine.style.width = Math.abs(childX - parentX) + 'px';
-            horizontalLine.style.left = Math.min(parentX, childX) + 'px';
-            horizontalLine.style.top = parentY + 'px';
-            
-            // 创建垂直线
-            const verticalLine = document.createElement('div');
-            verticalLine.className = 'connection-line vertical-line';
-            verticalLine.style.height = (childY - parentY) + 'px';
-            verticalLine.style.left = childX + 'px';
-            verticalLine.style.top = parentY + 'px';
-            
-            // 创建分支标签
-            if (branchLabel) {
-                // 检查是否已存在相同标签
-                const existingLabels = container.querySelectorAll('.branch-label-line');
-                let hasExistingLabel = false;
-                
-                existingLabels.forEach(label => {
-                    if (label.textContent === branchLabel) {
-                        hasExistingLabel = true;
-                    }
-                });
-                
-                if (!hasExistingLabel) {
-                    const labelElement = document.createElement('div');
-                    labelElement.className = 'branch-label-line';
-                    labelElement.textContent = branchLabel;
-                    labelElement.style.left = (Math.min(parentX, childX) + 5) + 'px';
-                    labelElement.style.top = (parentY - 20) + 'px';
-                    container.appendChild(labelElement);
-                }
-            }
-            
-            container.appendChild(horizontalLine);
-            container.appendChild(verticalLine);
-        }
-
-        // 绘制树连接线
-        function drawTreeConnections(rootNode, allNodes) {
-            // 移除之前的所有连线
-            const existingLines = document.querySelectorAll('.connection-line, .branch-label-line');
-            existingLines.forEach(line => line.remove());
-            
-            const container = document.querySelector('.decision-tree-container');
-            if (!container) return;
-            
-            // 遍历所有节点，绘制与子节点的连线
-            function drawConnections(node) {
-                const nodeElement = document.getElementById(`node-${node.id}`);
-                if (!nodeElement) return;
-                
-                if (node.node_type === 'decision') {
-                    // 决策节点绘制到子节点的连线
-                    const yesChild = allNodes.find(n => n.id === node.yes_child_id);
-                    const noChild = allNodes.find(n => n.id === node.no_child_id);
-                    
-                    if (yesChild) {
-                        drawLineToChild(node, yesChild, '是', container);
-                        drawConnections(yesChild);
-                    }
-                    
-                    if (noChild) {
-                        drawLineToChild(node, noChild, '否', container);
-                        drawConnections(noChild);
-                    }
-                } else if (node.node_type === 'root') {
-                    // 根节点绘制到子节点的连线
-                    const children = allNodes.filter(n => n.parent_id === node.id);
-                    children.forEach(child => {
-                        drawLineToChild(node, child, '', container);
-                        drawConnections(child);
-                    });
-                } else if (node.node_type === 'leaf') {
-                    // 叶子节点没有子节点
-                    return;
-                }
-            }
-            
-            drawConnections(rootNode);
-        }
-        
-        // 绘制到子节点的连线
+        // 绘制到子节点的连线 - 适配滚动容器
         function drawLineToChild(parentNode, childNode, branchLabel, container) {
             const parentElement = document.getElementById(`node-${parentNode.id}`);
             const childElement = document.getElementById(`node-${childNode.id}`);
@@ -1550,6 +1460,50 @@
                 
                 container.appendChild(labelElement);
             }
+        }
+
+        // 绘制树连接线 - 适配滚动容器
+        function drawTreeConnections(rootNode, allNodes) {
+            // 移除之前的所有连线
+            const existingLines = document.querySelectorAll('.connection-line, .branch-label-line');
+            existingLines.forEach(line => line.remove());
+            
+            const container = document.querySelector('.decision-tree-container');
+            if (!container) return;
+            
+            // 遍历所有节点，绘制与子节点的连线
+            function drawConnections(node) {
+                const nodeElement = document.getElementById(`node-${node.id}`);
+                if (!nodeElement) return;
+                
+                if (node.node_type === 'decision') {
+                    // 决策节点绘制到子节点的连线
+                    const yesChild = allNodes.find(n => n.id === node.yes_child_id);
+                    const noChild = allNodes.find(n => n.id === node.no_child_id);
+                    
+                    if (yesChild) {
+                        drawLineToChild(node, yesChild, '是', container);
+                        drawConnections(yesChild);
+                    }
+                    
+                    if (noChild) {
+                        drawLineToChild(node, noChild, '否', container);
+                        drawConnections(noChild);
+                    }
+                } else if (node.node_type === 'root') {
+                    // 根节点绘制到子节点的连线
+                    const children = allNodes.filter(n => n.parent_id === node.id);
+                    children.forEach(child => {
+                        drawLineToChild(node, child, '', container);
+                        drawConnections(child);
+                    });
+                } else if (node.node_type === 'leaf') {
+                    // 叶子节点没有子节点
+                    return;
+                }
+            }
+            
+            drawConnections(rootNode);
         }
     </script>
 </body>
