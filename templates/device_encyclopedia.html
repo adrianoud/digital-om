@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>设备百科</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            padding: 30px 0;
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .back-button {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            margin-bottom: 20px;
+            transition: background 0.3s;
+        }
+        
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 18px;
+            padding: 30px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            margin-bottom: 20px;
+        }
+        
+        .device-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .device-name {
+            font-size: 2rem;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .device-type {
+            font-size: 1.2rem;
+            color: #666;
+            margin-bottom: 20px;
+        }
+        
+        .device-image {
+            width: 200px;
+            height: 200px;
+            margin: 0 auto 20px;
+            border-radius: 15px;
+            background: linear-gradient(135deg, #D4FC79 0%, #96E6A1 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 5rem;
+        }
+        
+        .section-title {
+            font-size: 1.5rem;
+            color: #333;
+            margin: 25px 0 15px 0;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #eee;
+        }
+        
+        .section-content {
+            line-height: 1.6;
+            color: #555;
+        }
+        
+        .content-section {
+            margin-bottom: 12px;
+            padding: 8px 12px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            font-size: 0.95rem;
+        }
+        
+        .content-title {
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 3px;
+            font-size: 1rem;
+        }
+        
+        .content-text {
+            color: #555;
+            line-height: 1.4;
+        }
+        
+        .refresh-button {
+            display: block;
+            width: 200px;
+            margin: 30px auto;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+        
+        .refresh-button:hover {
+            transform: translateY(-2px);
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .card {
+                padding: 20px;
+            }
+            
+            .device-name {
+                font-size: 1.5rem;
+            }
+            
+            .content-section {
+                padding: 6px 10px;
+                margin-bottom: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>设备百科</h1>
+            <p>探索各种工业设备的原理与应用</p>
+        </div>
+        
+        <a href="/" class="back-button">← 返回首页</a>
+        
+        <div class="card">
+            <div class="device-header">
+                <div class="device-image">{{ device.icon }}</div>
+                <h2 class="device-name">{{ device.name }}</h2>
+                <p class="device-type">{{ device.type }}</p>
+            </div>
+            
+            <div class="section">
+                <h3 class="section-title">工作原理</h3>
+                <div class="section-content">
+                    {% if '【' in device.principle %}
+                        <!-- 格式化显示AI生成的内容 -->
+                        {% set principle_parts = device.principle.split('【') %}
+                        {% for part in principle_parts %}
+                            {% if part %}
+                                {% set title_and_content = part.split('】') %}
+                                <div class="content-section">
+                                    <div class="content-title">{{ title_and_content[0] }}</div>
+                                    <div class="content-text">{{ title_and_content[1] }}</div>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        <!-- 显示普通文本内容 -->
+                        <div class="content-section">
+                            <div class="content-text">{{ device.principle }}</div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="section">
+                <h3 class="section-title">主要功能</h3>
+                <div class="section-content">
+                    {% if '【' in device.function %}
+                        <!-- 格式化显示AI生成的内容 -->
+                        {% set function_parts = device.function.split('【') %}
+                        {% for part in function_parts %}
+                            {% if part %}
+                                {% set title_and_content = part.split('】') %}
+                                <div class="content-section">
+                                    <div class="content-title">{{ title_and_content[0] }}</div>
+                                    <div class="content-text">{{ title_and_content[1] }}</div>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        <!-- 显示普通文本内容 -->
+                        <div class="content-section">
+                            <div class="content-text">{{ device.function }}</div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="section">
+                <h3 class="section-title">应用场景</h3>
+                <div class="section-content">
+                    {% if '【' in device.application %}
+                        <!-- 格式化显示AI生成的内容 -->
+                        {% set application_parts = device.application.split('【') %}
+                        {% for part in application_parts %}
+                            {% if part %}
+                                {% set title_and_content = part.split('】') %}
+                                <div class="content-section">
+                                    <div class="content-title">{{ title_and_content[0] }}</div>
+                                    <div class="content-text">{{ title_and_content[1] }}</div>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        <!-- 显示普通文本内容 -->
+                        <div class="content-section">
+                            <div class="content-text">{{ device.application }}</div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <button class="refresh-button" onclick="location.reload()">换一个设备</button>
+        </div>
+    </div>
+</body>
+</html>
