@@ -138,19 +138,44 @@
         <div class="management-container">
             <div class="form-group">
                 <label for="device-select">选择设备:</label>
-                <select id="device-select" onchange="loadDeviceProperties()">
+                <select id="device-select" onchange="loadDevicePropertiesAndEvents()">
                     <option value="">请选择设备</option>
                 </select>
             </div>
             
             <div class="form-group">
+                <label for="data-type-select">选择数据类型:</label>
+                <select id="data-type-select" onchange="toggleDataSelection()">
+                    <option value="property">属性历史</option>
+                    <option value="event">事件历史</option>
+                </select>
+            </div>
+            
+            <div class="form-group" id="property-group">
                 <label for="property-select">选择属性:</label>
                 <select id="property-select" onchange="loadPropertyHistory()">
                     <option value="">请选择属性</option>
                 </select>
             </div>
             
-            <button class="btn" onclick="loadPropertyHistory()">加载历史数据</button>
+            <div class="form-group" id="event-group" style="display: none;">
+                <label for="event-select">选择事件:</label>
+                <select id="event-select" onchange="loadEventHistory()">
+                    <option value="">请选择事件</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="start-date">开始时间:</label>
+                <input type="datetime-local" id="start-date">
+            </div>
+            
+            <div class="form-group">
+                <label for="end-date">结束时间:</label>
+                <input type="datetime-local" id="end-date">
+            </div>
+            
+            <button class="btn" onclick="loadSelectedHistory()">加载历史数据</button>
             
             <div class="chart-container">
                 <canvas id="historyChart"></canvas>
@@ -200,13 +225,15 @@
             });
         }
         
-        // 加载设备属性
-        function loadDeviceProperties() {
+        // 加载设备属性和事件
+        function loadDevicePropertiesAndEvents() {
             const deviceId = document.getElementById('device-select').value;
             const propertySelect = document.getElementById('property-select');
+            const eventSelect = document.getElementById('event-select');
             
-            // 清空属性选择框
+            // 清空属性和事件选择框
             propertySelect.innerHTML = '<option value="">请选择属性</option>';
+            eventSelect.innerHTML = '<option value="">请选择事件</option>';
             
             if (!deviceId) {
                 return;
@@ -232,9 +259,57 @@
                                         renderPropertySelect(propData.data);
                                     }
                                 });
+                            
+                            // 加载设备事件
+                            fetch(`/api/device-types/${deviceType.id}/events`)
+                                .then(response => response.json())
+                                .then(eventData => {
+                                    if (eventData.success) {
+                                        renderEventSelect(eventData.data);
+                                    }
+                                });
                         }
                     }
                 });
+        }
+        
+        // 渲染事件选择框
+        function renderEventSelect(events) {
+            const select = document.getElementById('event-select');
+            select.innerHTML = '<option value="">请选择事件</option>';
+            
+            events.forEach(event => {
+                const option = document.createElement('option');
+                option.value = event.id;
+                option.textContent = `${event.name} (${event.identifier})`;
+                select.appendChild(option);
+            });
+        }
+        
+        // 切换数据选择显示
+        function toggleDataSelection() {
+            const dataType = document.getElementById('data-type-select').value;
+            const propertyGroup = document.getElementById('property-group');
+            const eventGroup = document.getElementById('event-group');
+            
+            if (dataType === 'property') {
+                propertyGroup.style.display = 'block';
+                eventGroup.style.display = 'none';
+            } else {
+                propertyGroup.style.display = 'none';
+                eventGroup.style.display = 'block';
+            }
+        }
+        
+        // 加载选中的历史数据
+        function loadSelectedHistory() {
+            const dataType = document.getElementById('data-type-select').value;
+            
+            if (dataType === 'property') {
+                loadPropertyHistory();
+            } else {
+                loadEventHistory();
+            }
         }
         
         // 渲染属性选择框
@@ -260,7 +335,19 @@
                 return;
             }
             
-            fetch(`/api/property-history/${deviceId}/${propertyId}?limit=50`)
+            // 获取时间范围
+            const startDate = document.getElementById('start-date').value;
+            const endDate = document.getElementById('end-date').value;
+            
+            let url = `/api/property-history/${deviceId}/${propertyId}?limit=50`;
+            if (startDate) {
+                url += `&start_time=${encodeURIComponent(startDate)}`;
+            }
+            if (endDate) {
+                url += `&end_time=${encodeURIComponent(endDate)}`;
+            }
+            
+            fetch(url)
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
@@ -271,6 +358,42 @@
                 })
                 .catch(error => {
                     console.error('加载历史数据出错:', error);
+                });
+        }
+        
+        // 加载事件历史数据
+        function loadEventHistory() {
+            const deviceId = document.getElementById('device-select').value;
+            const eventId = document.getElementById('event-select').value;
+            
+            if (!deviceId || !eventId) {
+                alert('请选择设备和事件');
+                return;
+            }
+            
+            // 获取时间范围
+            const startDate = document.getElementById('start-date').value;
+            const endDate = document.getElementById('end-date').value;
+            
+            let url = `/api/event-history/${deviceId}/${eventId}?limit=50`;
+            if (startDate) {
+                url += `&start_time=${encodeURIComponent(startDate)}`;
+            }
+            if (endDate) {
+                url += `&end_time=${encodeURIComponent(endDate)}`;
+            }
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        renderEventChart(data.data);
+                    } else {
+                        console.error('加载事件历史数据失败:', data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('加载事件历史数据出错:', error);
                 });
         }
         
@@ -319,6 +442,94 @@
                             ticks: {
                                 maxRotation: 45,
                                 minRotation: 45
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 渲染事件历史图表
+        function renderEventChart(historyData) {
+            const ctx = document.getElementById('historyChart').getContext('2d');
+            
+            // 如果已有图表，先销毁
+            if (chart) {
+                chart.destroy();
+            }
+            
+            // 准备图表数据
+            const labels = historyData.map(item => {
+                const date = new Date(item.timestamp);
+                return date.toLocaleString();
+            }).reverse();
+            
+            // 将事件状态转换为数值：正常为0，其他状态为1
+            const values = historyData.map(item => {
+                return (item.status === 'normal' || item.status === 'triggered') ? 1 : 1;
+            }).reverse();
+            
+            // 定义状态颜色映射
+            const statusColors = {
+                'normal': 'rgba(40, 167, 69, 0.5)',      // 绿色 - 正常
+                'info': 'rgba(0, 123, 255, 0.5)',       // 蓝色 - 信息
+                'warning': 'rgba(255, 193, 7, 0.5)',    // 黄色 - 警告
+                'error': 'rgba(220, 53, 69, 0.5)',      // 红色 - 错误
+                'triggered': 'rgba(255, 139, 0, 0.5)'    // 橙色 - 已触发
+            };
+            
+            // 创建图表
+            chart = new Chart(ctx, {
+                type: 'bar', // 使用柱状图显示事件状态
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '事件状态',
+                        data: values,
+                        backgroundColor: historyData.reverse().map(item => {
+                            return statusColors[item.status] || 'rgba(108, 117, 125, 0.5)'; // 默认灰色
+                        }),
+                        borderColor: historyData.reverse().map(item => {
+                            // 根据状态返回边框颜色
+                            const baseColor = statusColors[item.status] || 'rgba(108, 117, 125, 0.5)';
+                            // 提取RGB值并转换为边框颜色
+                            const rgb = baseColor.match(/rgba?\(([^)]+)\)/)[1].split(',').slice(0, 3).join(',');
+                            return `rgb(${rgb})`;
+                        }),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            min: 0,
+                            max: 1,
+                            ticks: {
+                                callback: function(value) {
+                                    if (value === 0) return '正常';
+                                    if (value === 1) return '异常/警告';
+                                    return value;
+                                }
+                            },
+                            display: false // 隐藏y轴刻度，因为我们只关心状态
+                        },
+                        x: {
+                            ticks: {
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const index = context.dataIndex;
+                                    const item = historyData[index];
+                                    return `状态: ${item.status}, 时间: ${new Date(item.timestamp).toLocaleString()}`;
+                                }
                             }
                         }
                     }

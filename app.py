@@ -2027,12 +2027,25 @@ def api_get_property_history(device_id, property_id):
         # 获取查询参数
         limit = request.args.get('limit', type=int, default=100)
         offset = request.args.get('offset', type=int, default=0)
+        start_time = request.args.get('start_time')
+        end_time = request.args.get('end_time')
         
-        # 查询历史数据
-        histories = PropertyHistory.query.filter_by(
+        # 构建查询
+        query = PropertyHistory.query.filter_by(
             device_id=device_id, 
             property_id=property_id
-        ).order_by(PropertyHistory.timestamp.desc()).limit(limit).offset(offset).all()
+        )
+        
+        # 添加时间范围过滤
+        if start_time:
+            start_datetime = datetime.fromisoformat(start_time.replace('Z', '+00:00')) if 'Z' in start_time else datetime.fromisoformat(start_time)
+            query = query.filter(PropertyHistory.timestamp >= start_datetime)
+        if end_time:
+            end_datetime = datetime.fromisoformat(end_time.replace('Z', '+00:00')) if 'Z' in end_time else datetime.fromisoformat(end_time)
+            query = query.filter(PropertyHistory.timestamp <= end_datetime)
+        
+        # 执行查询
+        histories = query.order_by(PropertyHistory.timestamp.desc()).limit(limit).offset(offset).all()
         
         return jsonify({
             'success': True,
@@ -2089,12 +2102,25 @@ def api_get_event_history(device_id, event_id):
         # 获取查询参数
         limit = request.args.get('limit', type=int, default=100)
         offset = request.args.get('offset', type=int, default=0)
+        start_time = request.args.get('start_time')
+        end_time = request.args.get('end_time')
         
-        # 查询历史数据
-        histories = EventHistory.query.filter_by(
+        # 构建查询
+        query = EventHistory.query.filter_by(
             device_id=device_id, 
             event_id=event_id
-        ).order_by(EventHistory.timestamp.desc()).limit(limit).offset(offset).all()
+        )
+        
+        # 添加时间范围过滤
+        if start_time:
+            start_datetime = datetime.fromisoformat(start_time.replace('Z', '+00:00')) if 'Z' in start_time else datetime.fromisoformat(start_time)
+            query = query.filter(EventHistory.timestamp >= start_datetime)
+        if end_time:
+            end_datetime = datetime.fromisoformat(end_time.replace('Z', '+00:00')) if 'Z' in end_time else datetime.fromisoformat(end_time)
+            query = query.filter(EventHistory.timestamp <= end_datetime)
+        
+        # 执行查询
+        histories = query.order_by(EventHistory.timestamp.desc()).limit(limit).offset(offset).all()
         
         return jsonify({
             'success': True,

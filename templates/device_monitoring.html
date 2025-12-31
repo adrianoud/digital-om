@@ -17,7 +17,7 @@
         }
         
         .container {
-            max-width: 1200px;
+            max-width: 1600px;
             margin: 0 auto;
             padding: 20px;
         }
@@ -96,11 +96,20 @@
         }
         
         .device-image {
-            text-align: center;
             min-height: 300px;
             display: flex;
             align-items: center;
             justify-content: center;
+        }
+        
+        #device-basic-info {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #dee2e6;
+        }
+        
+        #device-basic-info h3 {
+            margin-top: 0;
         }
         
         .device-image img {
@@ -138,6 +147,27 @@
             display: flex;
             align-items: center;
             gap: 10px;
+        }
+        
+        .data-source-tag {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.7em;
+            font-weight: bold;
+            color: white;
+        }
+        
+        .data-source-tag.register {
+            background-color: #28a745; /* 绿色 - 寄存器 */
+        }
+        
+        .data-source-tag.calculation {
+            background-color: #007bff; /* 蓝色 - 计算 */
+        }
+        
+        .data-source-tag.simulation {
+            background-color: #6c757d; /* 灰色 - 模拟值 */
         }
         
         .history-link {
@@ -262,6 +292,9 @@
                     <div class="device-image" id="device-image">
                         <div class="no-data">请选择设备</div>
                     </div>
+                    <div id="device-basic-info">
+                        <div class="no-data">请选择设备</div>
+                    </div>
                 </div>
                 
                 <!-- 右侧设备详情 -->
@@ -291,6 +324,12 @@
         let deviceTypesCache = {};
         // 缓存设备属性绑定信息
         let propertyBindingsCache = {};
+        // 缓存属性历史数据，避免重复请求
+        let propertyHistoryCache = {};
+        // 缓存事件状态，避免频繁计算
+        let eventStatusCache = {};
+        // 记录上次事件状态更新时间
+        let lastEventUpdate = {};
         // 防抖定时器
         let debounceTimer = null;
 
@@ -409,7 +448,12 @@
             if (updateInterval) {
                 clearInterval(updateInterval);
             }
+            // 每10秒更新属性值，每2分钟更新事件状态
             updateInterval = setInterval(updateDevicePropertyValues, 10000);
+            // 每2分钟更新事件状态
+            setInterval(updateEventStatus, 120000);
+            // 页面加载后立即更新一次事件状态
+            setTimeout(updateEventStatus, 1000); // 1秒后执行，确保页面已渲染
         }
         
         // 获取设备类型信息（带缓存）
@@ -539,15 +583,18 @@
             // 更新最后更新时间
             document.getElementById('last-updated').textContent = new Date().toLocaleString();
             
-            const container = document.getElementById('device-details');
+            const detailsContainer = document.getElementById('device-details');
+            const infoContainer = document.getElementById('device-basic-info');
             
             if (!selectedDevice) {
-                container.innerHTML = '<div class="no-data">请选择设备</div>';
+                detailsContainer.innerHTML = '<div class="no-data">请选择设备</div>';
+                infoContainer.innerHTML = '<div class="no-data">请选择设备</div>';
                 return;
             }
             
             // 显示加载状态
-            container.innerHTML = '<div class="no-data">加载中...</div>';
+            detailsContainer.innerHTML = '<div class="no-data">加载中...</div>';
+            infoContainer.innerHTML = '<div class="no-data">加载中...</div>';
             
             // 获取设备类型信息
             getDeviceType(selectedDevice.type)
@@ -560,46 +607,62 @@
                             getDeviceEvents(deviceType.id)
                         ]).then(([properties, methods, events]) => {
                             renderDeviceDetails(selectedDevice, deviceType, properties, methods, events);
+                            updateDeviceBasicInfo(); // 更新基本信息
                         }).catch(error => {
                             console.error('获取设备详情失败:', error);
-                            container.innerHTML = '<div class="no-data">加载失败: ' + error.message + '</div>';
+                            detailsContainer.innerHTML = '<div class="no-data">加载失败: ' + error.message + '</div>';
+                            infoContainer.innerHTML = '<div class="no-data">加载失败: ' + error.message + '</div>';
                         });
                     } else {
                         renderDeviceDetails(selectedDevice, null, [], [], []);
+                        updateDeviceBasicInfo(); // 更新基本信息
                     }
                 })
                 .catch(error => {
                     console.error('获取设备类型失败:', error);
-                    container.innerHTML = '<div class="no-data">加载失败: ' + error.message + '</div>';
+                    detailsContainer.innerHTML = '<div class="no-data">加载失败: ' + error.message + '</div>';
+                    infoContainer.innerHTML = '<div class="no-data">加载失败: ' + error.message + '</div>';
                 });
         }
         
+        // 更新设备基本信息
+        function updateDeviceBasicInfo() {
+            const container = document.getElementById('device-basic-info');
+            
+            if (!selectedDevice) {
+                container.innerHTML = '<div class="no-data">请选择设备</div>';
+                return;
+            }
+            
+            container.innerHTML = `
+                <h3>${selectedDevice.name || 'N/A'}</h3>
+                <p><strong>设备编码:</strong> ${selectedDevice.code || 'N/A'}</p>
+                <p><strong>设备类型:</strong> ${selectedDevice.type || 'N/A'}</p>
+                <p><strong>设备型号:</strong> ${selectedDevice.model || 'N/A'}</p>
+                <p><strong>采购日期:</strong> ${selectedDevice.purchase_date || 'N/A'}</p>
+                <p><strong>录入时间:</strong> ${selectedDevice.entry_time ? new Date(selectedDevice.entry_time).toLocaleString() : 'N/A'}</p>
+            `;
+        }
+        
         // 更新设备属性值（仅更新数值部分）
-        function updateDevicePropertyValues() {
+        async function updateDevicePropertyValues() {
             if (!selectedDevice) return;
             
             // 更新最后更新时间
             document.getElementById('last-updated').textContent = new Date().toLocaleString();
             
-            // 使用缓存的设备类型信息
-            getDeviceType(selectedDevice.type)
-                .then(deviceType => {
-                    if (deviceType) {
-                        // 获取设备属性
-                        getDeviceProperties(deviceType.id)
-                            .then(properties => {
-                                // 并行更新所有属性值
-                                const updatePromises = properties.map(prop => updatePropertyValue(selectedDevice.id, prop));
-                                Promise.all(updatePromises);
-                            })
-                            .catch(error => {
-                                console.error('获取属性失败:', error);
-                            });
-                    }
-                })
-                .catch(error => {
-                    console.error('获取设备类型失败:', error);
-                });
+            try {
+                // 使用缓存的设备类型信息
+                const deviceType = await getDeviceType(selectedDevice.type);
+                if (deviceType) {
+                    // 获取设备属性
+                    const properties = await getDeviceProperties(deviceType.id);
+                    // 并行更新所有属性值
+                    await Promise.all(properties.map(prop => updatePropertyValue(selectedDevice.id, prop)));
+                }
+            } catch (error) {
+                console.error('获取设备类型失败:', error);
+            }
         }
         
         // 更新单个属性的值
@@ -619,6 +682,13 @@
                                         propertyElement.textContent = `${data.value !== null ? data.value : 'N/A'} ${prop.unit || ''}`;
                                     }
                                     
+                                    // 更新数据源标签
+                                    const dataSourceTag = document.querySelector(`.property-item[data-property-id="${prop.id}"] .data-source-tag`);
+                                    if (dataSourceTag) {
+                                        dataSourceTag.textContent = '寄存器';
+                                        dataSourceTag.className = 'data-source-tag register';
+                                    }
+                                    
                                     // 保存历史数据
                                     savePropertyHistory(deviceId, prop.id, data.value);
                                 }
@@ -628,6 +698,13 @@
                                 const propertyElement = document.querySelector(`.property-item[data-property-id="${prop.id}"] .property-value`);
                                 if (propertyElement) {
                                     propertyElement.textContent = `读取失败 ${prop.unit || ''}`;
+                                }
+                                
+                                // 更新数据源标签
+                                const dataSourceTag = document.querySelector(`.property-item[data-property-id="${prop.id}"] .data-source-tag`);
+                                if (dataSourceTag) {
+                                    dataSourceTag.textContent = '寄存器';
+                                    dataSourceTag.className = 'data-source-tag register';
                                 }
                             });
                     } else if (bindingData && bindingData.calculation_expression) {
@@ -639,6 +716,13 @@
                                     propertyElement.textContent = `${calculatedValue} ${prop.unit || ''}`;
                                 }
                                 
+                                // 更新数据源标签
+                                const dataSourceTag = document.querySelector(`.property-item[data-property-id="${prop.id}"] .data-source-tag`);
+                                if (dataSourceTag) {
+                                    dataSourceTag.textContent = '计算';
+                                    dataSourceTag.className = 'data-source-tag calculation';
+                                }
+                                
                                 // 保存历史数据
                                 savePropertyHistory(deviceId, prop.id, calculatedValue);
                             })
@@ -647,6 +731,13 @@
                                 const propertyElement = document.querySelector(`.property-item[data-property-id="${prop.id}"] .property-value`);
                                 if (propertyElement) {
                                     propertyElement.textContent = `计算失败 ${prop.unit || ''}`;
+                                }
+                                
+                                // 更新数据源标签
+                                const dataSourceTag = document.querySelector(`.property-item[data-property-id="${prop.id}"] .data-source-tag`);
+                                if (dataSourceTag) {
+                                    dataSourceTag.textContent = '计算';
+                                    dataSourceTag.className = 'data-source-tag calculation';
                                 }
                             });
                     } else {
@@ -664,6 +755,13 @@
                         const propertyElement = document.querySelector(`.property-item[data-property-id="${prop.id}"] .property-value`);
                         if (propertyElement) {
                             propertyElement.textContent = `${value} ${prop.unit || ''}`;
+                        }
+                        
+                        // 更新数据源标签
+                        const dataSourceTag = document.querySelector(`.property-item[data-property-id="${prop.id}"] .data-source-tag`);
+                        if (dataSourceTag) {
+                            dataSourceTag.textContent = '模拟值';
+                            dataSourceTag.className = 'data-source-tag simulation';
                         }
                         
                         // 保存历史数据
@@ -811,7 +909,7 @@
         }
         
         // 渲染设备详情
-        function renderDeviceDetails(device, deviceType, properties, methods, events) {
+        async function renderDeviceDetails(device, deviceType, properties, methods, events) {
             const container = document.getElementById('device-details');
             
             // 并行获取所有属性的真实值，而不是嵌套Promise
@@ -829,12 +927,16 @@
                                         
                                         return {
                                             ...prop,
-                                            value: data.value !== null ? data.value : 'N/A'
+                                            value: data.value !== null ? data.value : 'N/A',
+                                            dataSource: 'register',
+                                            dataSourceLabel: '寄存器'
                                         };
                                     } else {
                                         return {
                                             ...prop,
-                                            value: '读取失败: ' + data.message
+                                            value: '读取失败: ' + data.message,
+                                            dataSource: 'register',
+                                            dataSourceLabel: '寄存器'
                                         };
                                     }
                                 })
@@ -842,7 +944,9 @@
                                     console.error('读取Modbus数据失败:', error);
                                     return {
                                         ...prop,
-                                        value: '读取失败: ' + error.message
+                                        value: '读取失败: ' + error.message,
+                                        dataSource: 'register',
+                                        dataSourceLabel: '寄存器'
                                     };
                                 });
                         } else if (bindingData && bindingData.calculation_expression) {
@@ -854,14 +958,18 @@
                                     
                                     return {
                                         ...prop,
-                                        value: calculatedValue
+                                        value: calculatedValue,
+                                        dataSource: 'calculation',
+                                        dataSourceLabel: '计算'
                                     };
                                 })
                                 .catch(error => {
                                     console.error('计算属性值失败(渲染时):', error);
                                     return {
                                         ...prop,
-                                        value: '计算失败: ' + error.message
+                                        value: '计算失败: ' + error.message,
+                                        dataSource: 'calculation',
+                                        dataSourceLabel: '计算'
                                     };
                                 });
                         } else {
@@ -880,7 +988,9 @@
                             
                             return {
                                 ...prop,
-                                value: value
+                                value: value,
+                                dataSource: 'simulation',
+                                dataSourceLabel: '模拟值'
                             };
                         }
                     })
@@ -902,14 +1012,9 @@
                     });
             });
             
+            // 使用Promise.all处理属性值获取
             Promise.all(valuePromises).then(propertiesWithValues => {
                 let html = `
-                    <h3>${device.name || 'N/A'}</h3>
-                    <p>设备编码: ${device.code || 'N/A'}</p>
-                    <p>设备类型: ${device.type || 'N/A'}</p>
-                    <p>设备型号: ${device.model || 'N/A'}</p>
-                    <p>采购日期: ${device.purchase_date || 'N/A'}</p>
-                    
                     <h4>属性</h4>
                 `;
                 
@@ -921,6 +1026,7 @@
                                 <span class="property-name">${prop.name || 'N/A'} (${prop.identifier || 'N/A'})</span>
                                 <span class="property-value-container">
                                     <span class="property-value">${prop.value !== undefined ? prop.value : 'N/A'} ${prop.unit || ''}</span>
+                                    <span class="data-source-tag ${prop.dataSource || ''}">${prop.dataSourceLabel || ''}</span>
                                     <a href="#" class="history-link" onclick="showPropertyHistory(${device.id}, ${prop.id}); return false;">[查看历史]</a>
                                 </span>
                             </div>
@@ -952,35 +1058,9 @@
                 if (events.length > 0) {
                     html += '<div class="events-list">';
                     events.forEach(event => {
-                        // 根据您的要求设置默认状态为"正常"
+                        // 初始状态设为"正常"，实际状态将由updateEventStatus异步更新
                         let statusClass = 'event-normal';
                         let statusText = '正常';
-                        
-                        // 检查事件是否被触发
-                        const isTriggered = checkEventTrigger(event, propertiesWithValues);
-                        
-                        // 根据事件级别和触发状态设置显示文本
-                        if (isTriggered) {
-                            // 事件被触发
-                            if (event.level === 'warning') {
-                                statusClass = 'event-warning';
-                                statusText = '警告';
-                            } else if (event.level === 'error') {
-                                statusClass = 'event-error';
-                                statusText = '错误';
-                            } else {
-                                // info级别事件触发时显示"注意"
-                                statusClass = 'event-info';
-                                statusText = '注意';
-                            }
-                        } else {
-                            // 事件未触发，统一显示"正常"
-                            statusClass = 'event-normal';
-                            statusText = '正常';
-                        }
-                        
-                        // 保存事件历史数据
-                        saveEventHistory(device.id, event.id, isTriggered ? 'triggered' : 'normal');
                         
                         html += `
                             <div class="event-item">
@@ -1221,7 +1301,7 @@
         }
         
         // 检查事件是否被触发
-        function checkEventTrigger(event, properties) {
+        async function checkEventTrigger(event, properties) {
             // 如果事件没有条件表达式，则不触发
             if (!event.condition) {
                 return false;
@@ -1244,33 +1324,312 @@
                 // 获取事件条件表达式
                 const expression = event.condition.trim();
                 
-                // 简单的安全表达式评估函数
-                function evaluateExpression(expr, ctx) {
-                    // 替换属性标识符为实际值
-                    let resultExpr = expr;
-                    for (const [key, value] of Object.entries(ctx)) {
-                        // 转义特殊字符
-                        const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                        const regex = new RegExp('\\b' + escapedKey + '\\b', 'g');
-                        // 确保替换的值是安全的
-                        const safeValue = (typeof value === 'string') ? JSON.stringify(value) : value;
-                        resultExpr = resultExpr.replace(regex, safeValue);
+                // 获取属性的历史数据
+                async function getPropertyHistoryData(deviceId, propertyId, timeRange) {
+                    // 从时间范围字符串中提取秒数
+                    const timeRangeSeconds = parseInt(timeRange.replace('T', ''));
+                    const startTime = new Date(Date.now() - timeRangeSeconds * 1000);
+                    const startTimeStr = startTime.toISOString().replace('T', ' ').substring(0, 19);
+                    
+                    // 创建缓存键
+                    const cacheKey = `${deviceId}_${propertyId}_${timeRange}`;
+                    
+                    // 检查缓存中是否存在数据
+                    if (propertyHistoryCache[cacheKey]) {
+                        const cachedData = propertyHistoryCache[cacheKey];
+                        const cacheTime = new Date(cachedData.timestamp);
+                        const now = new Date();
+                        
+                        // 如果缓存数据在5秒内，则使用缓存
+                        if (now - cacheTime < 5000) {
+                            return cachedData.data;
+                        }
                     }
                     
-                    // 只允许特定的字符（数字、运算符、空格、括号、小数点、引号）
-                    if (!/^[0-9+\-*/().<>=!&|\s"']+$/.test(resultExpr)) {
-                        throw new Error('表达式包含非法字符');
+                    // 从后端API获取历史数据
+                    try {
+                        const response = await fetch(`/api/property-history/${deviceId}/${propertyId}?start_time=${encodeURIComponent(startTimeStr)}&limit=1000`);
+                        const data = await response.json();
+                        if (data.success) {
+                            // 缓存数据
+                            propertyHistoryCache[cacheKey] = {
+                                data: data.data,
+                                timestamp: new Date().toISOString()
+                            };
+                            return data.data;
+                        } else {
+                            console.error('获取历史数据失败:', data.message);
+                            return [];
+                        }
+                    } catch (error) {
+                        console.error('获取历史数据时出错:', error);
+                        return [];
                     }
-                    
-                    // 使用Function构造器而不是eval来评估表达式（相对更安全）
-                    return Function('"use strict"; return (' + resultExpr + ')')();
                 }
                 
-                const result = evaluateExpression(expression, context);
+                // 聚合函数
+                async function aggregate(deviceId, propertyIdentifier, operation, timeRange) {
+                    // 找到属性ID
+                    const property = properties.find(p => p.identifier === propertyIdentifier);
+                    if (!property) {
+                        console.error(`未找到属性: ${propertyIdentifier}`);
+                        return 0;
+                    }
+                    
+                    // 从后端获取历史数据
+                    const historyData = await getPropertyHistoryData(deviceId, property.id, timeRange);
+                    if (!historyData || historyData.length === 0) {
+                        return 0;
+                    }
+                    
+                    // 提取数值
+                    const values = historyData
+                        .map(item => parseFloat(item.value))
+                        .filter(val => !isNaN(val));
+                    
+                    if (values.length === 0) {
+                        return 0;
+                    }
+                    
+                    // 根据操作类型计算聚合值
+                    switch (operation) {
+                        case 'sum':
+                            return values.reduce((sum, val) => sum + val, 0);
+                        case 'avg':
+                            return values.reduce((sum, val) => sum + val, 0) / values.length;
+                        case 'max':
+                            return Math.max(...values);
+                        case 'min':
+                            return Math.min(...values);
+                        case 'variance':
+                            const mean = values.reduce((sum, val) => sum + val, 0) / values.length;
+                            const squaredDiffs = values.map(val => Math.pow(val - mean, 2));
+                            return squaredDiffs.reduce((sum, val) => sum + val, 0) / squaredDiffs.length;
+                        case 'median':
+                            const sorted = [...values].sort((a, b) => a - b);
+                            const mid = Math.floor(sorted.length / 2);
+                            return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+                        default:
+                            return 0;
+                    }
+                }
+                
+                // 安全表达式评估函数
+                async function evaluateExpression(expr, ctx, deviceId) {
+                    console.log('原始表达式:', expr);
+                    
+                    // 首先，识别所有聚合函数中使用的属性名（考虑可能存在的空格）
+                    const aggRegex = /(\w+)\(\s*(\w+)\s*,\s*(T\d+)\s*\)/g;
+                    const aggMatches = [...expr.matchAll(aggRegex)];
+                    const aggProperties = new Set();
+                    
+                    for (const match of aggMatches) {
+                        const property = match[2]; // 第二个捕获组是属性名
+                        aggProperties.add(property);
+                    }
+                    
+                    console.log('聚合函数中使用的属性:', Array.from(aggProperties));
+                    
+                    // 替换不在聚合函数中的普通属性标识符为实际值
+                    let processedExpr = expr;
+                    const sortedKeys = Object.keys(ctx).sort((a, b) => b.length - a.length);
+                    
+                    for (const key of sortedKeys) {
+                        // 检查属性是否在任何聚合函数中
+                        if (!aggProperties.has(key)) {
+                            // 如果不在聚合函数中，则替换为实际值
+                            const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                            const regex = new RegExp('\\b' + escapedKey + '\\b', 'g');
+                            const safeValue = (typeof ctx[key] === 'string') ? JSON.stringify(ctx[key]) : ctx[key];
+                            processedExpr = processedExpr.replace(regex, safeValue);
+                        }
+                    }
+                    
+                    console.log('普通属性替换后:', processedExpr);
+                    
+                    // 现在处理聚合函数，将它们替换为计算后的值
+                    // 使用更宽松的正则表达式来匹配聚合函数（考虑可能存在的空格）
+                    const finalAggRegex = /(\w+)\(\s*(\w+)\s*,\s*(T\d+)\s*\)/g;
+                    let hasAggFunc = true;
+                    
+                    // 由于需要异步处理，我们需要循环处理，直到没有聚合函数为止
+                    while (hasAggFunc) {
+                        const match = /(\w+)\(\s*(\w+)\s*,\s*(T\d+)\s*\)/.exec(processedExpr);
+                        if (match) {
+                            const fullMatch = match[0];
+                            const operation = match[1];
+                            const property = match[2];
+                            const timeRange = match[3];
+                            
+                            // 计算聚合函数的值
+                            const aggValue = await aggregate(deviceId, property, operation, timeRange);
+                            
+                            // 替换第一个匹配的聚合函数
+                            processedExpr = processedExpr.replace(fullMatch, aggValue);
+                        } else {
+                            hasAggFunc = false;
+                        }
+                    }
+                    
+                    console.log('聚合函数值替换后:', processedExpr);
+                    
+                    // 只允许特定的字符（数字、运算符、空格、括号、小数点、引号、逻辑运算符）
+                    if (!/^[\d+\-*/().<>=!&|\s"'\\]+$/.test(processedExpr)) {
+                        throw new Error('表达式包含非法字符: ' + processedExpr);
+                    }
+
+                    // 使用Function构造器而不是eval来评估表达式（相对更安全）
+                    return Function('"use strict"; return (' + processedExpr + ')')();
+                }
+                
+                const result = await evaluateExpression(expression, context, selectedDevice.id);
                 return Boolean(result);
             } catch (error) {
                 console.error('事件条件表达式求值失败:', error);
                 return false;
+            }
+        }
+        
+        // 更新事件状态
+        async function updateEventStatus() {
+            if (!selectedDevice) return;
+            
+            try {
+                // 检查是否在5秒内已更新过此设备的事件状态，避免频繁更新
+                const now = Date.now();
+                const deviceId = selectedDevice.id;
+                if (lastEventUpdate[deviceId] && (now - lastEventUpdate[deviceId] < 5000)) {
+                    return; // 5秒内已更新过，跳过本次更新
+                }
+                lastEventUpdate[deviceId] = now;
+                
+                // 获取设备类型信息
+                const deviceType = await getDeviceType(selectedDevice.type);
+                if (deviceType) {
+                    // 获取设备属性和事件
+                    const [properties, events] = await Promise.all([
+                        getDeviceProperties(deviceType.id),
+                        getDeviceEvents(deviceType.id)
+                    ]);
+                    
+                    // 获取当前所有属性的值
+                    const propertiesWithValues = [];
+                    for (const prop of properties) {
+                        const bindingData = await getPropertyBinding(selectedDevice.id, prop.id);
+                        if (bindingData && bindingData.modbus_point_id) {
+                            // 存在Modbus绑定，从Modbus读取真实值
+                            try {
+                                const response = await fetch(`/api/modbus-point/${bindingData.modbus_point_id}/value`);
+                                const data = await response.json();
+                                if (data.success) {
+                                    propertiesWithValues.push({
+                                        ...prop,
+                                        value: data.value !== null ? data.value : 'N/A',
+                                        dataSource: 'register',
+                                        dataSourceLabel: '寄存器'
+                                    });
+                                } else {
+                                    propertiesWithValues.push({
+                                        ...prop,
+                                        value: '读取失败: ' + data.message,
+                                        dataSource: 'register',
+                                        dataSourceLabel: '寄存器'
+                                    });
+                                }
+                            } catch (error) {
+                                console.error('读取Modbus数据失败:', error);
+                                propertiesWithValues.push({
+                                    ...prop,
+                                    value: '读取失败: ' + error.message,
+                                    dataSource: 'register',
+                                    dataSourceLabel: '寄存器'
+                                });
+                            }
+                        } else if (bindingData && bindingData.calculation_expression) {
+                            // 存在计算表达式，计算值
+                            try {
+                                const calculatedValue = await calculatePropertyValue(selectedDevice.id, prop, bindingData.calculation_expression);
+                                propertiesWithValues.push({
+                                    ...prop,
+                                    value: calculatedValue,
+                                    dataSource: 'calculation',
+                                    dataSourceLabel: '计算'
+                                });
+                            } catch (error) {
+                                console.error('计算属性值失败:', error);
+                                propertiesWithValues.push({
+                                    ...prop,
+                                    value: '计算失败: ' + error.message,
+                                    dataSource: 'calculation',
+                                    dataSourceLabel: '计算'
+                                });
+                            }
+                        } else {
+                            // 没有绑定，使用模拟值
+                            let value = 'N/A';
+                            if (prop.data_type === 'int' || prop.data_type === 'float') {
+                                if (prop.min_value !== null && prop.max_value !== null) {
+                                    value = (Math.random() * (prop.max_value - prop.min_value) + prop.min_value).toFixed(2);
+                                } else {
+                                    value = (Math.random() * 100).toFixed(2);
+                                }
+                            }
+                            propertiesWithValues.push({
+                                ...prop,
+                                value: value,
+                                dataSource: 'simulation',
+                                dataSourceLabel: '模拟值'
+                            });
+                        }
+                    }
+                    
+                    // 检查每个事件的状态
+                    for (const event of events) {
+                        // 检查事件是否被触发
+                        const isTriggered = await checkEventTrigger(event, propertiesWithValues);
+                        
+                        // 根据事件级别和触发状态设置显示文本
+                        let statusClass = 'event-normal';
+                        let statusText = '正常';
+                        
+                        if (isTriggered) {
+                            // 事件被触发
+                            if (event.level === 'warning') {
+                                statusClass = 'event-warning';
+                                statusText = '警告';
+                            } else if (event.level === 'error') {
+                                statusClass = 'event-error';
+                                statusText = '错误';
+                            } else {
+                                // info级别事件触发时显示"注意"
+                                statusClass = 'event-info';
+                                statusText = '注意';
+                            }
+                        } else {
+                            // 事件未触发，统一显示"正常"
+                            statusClass = 'event-normal';
+                            statusText = '正常';
+                        }
+                        
+                        // 更新界面上的事件状态
+                        const eventElements = document.querySelectorAll('.event-item');
+                        eventElements.forEach(element => {
+                            const eventText = element.querySelector('span:first-child');
+                            if (eventText && eventText.textContent.includes(event.name || event.identifier)) {
+                                const statusElement = element.querySelector('.event-status');
+                                if (statusElement) {
+                                    statusElement.className = `event-status ${statusClass}`;
+                                    statusElement.textContent = statusText;
+                                }
+                            }
+                        });
+                        
+                        // 保存事件历史数据
+                        saveEventHistory(selectedDevice.id, event.id, isTriggered ? 'triggered' : 'normal');
+                    }
+                }
+            } catch (error) {
+                console.error('更新事件状态失败:', error);
             }
         }
     </script>
